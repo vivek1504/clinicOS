@@ -1,0 +1,396 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Light-only app: scope shadcn's dark: utilities to a .dark class (never set) instead of the OS theme. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+  ClinicOS design tokens.
+
+  Canvas is warm bone, ink is near-black, one clinical accent (deep surgical green) for the
+  doctor's actions and state, and one reserved hue (muted iris) for anything the model drafted.
+  Nothing else carries colour except status and the allergy line.
+*/
+@theme inline {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@theme {
+  /* Neutral scale (warm) */
+  --color-canvas: #f6f5f2;
+  --color-canvas-deep: #efede8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f3ef;
+  --color-line: #e6e4de;
+  --color-line-strong: #d3d0c8;
+  --color-ink: #16181b;
+  --color-ink-2: #4d5158;
+  --color-ink-3: #7d828b;
+  --color-ink-4: #a6aab2;
+
+  /* Clinical accent — surgical green */
+  --color-accent-50: #eef6f2;
+  --color-accent-100: #d9ece3;
+  --color-accent-200: #b4d8c8;
+  --color-accent-300: #7fbba4;
+  --color-accent-500: #1f7a63;
+  --color-accent-600: #176a55;
+  --color-accent-700: #125746;
+  --color-accent-800: #0f4638;
+  --color-accent-900: #0b3529;
+
+  /* AI-drafted content — muted iris. Reserved: never used for anything the doctor wrote. */
+  --color-ai-50: #f4f3fc;
+  --color-ai-100: #e8e6f8;
+  --color-ai-200: #d3cff1;
+  --color-ai-300: #b3acdf;
+  --color-ai-500: #6a62d0;
+  --color-ai-600: #5a52bd;
+  --color-ai-700: #4a439d;
+  --color-ai-900: #2c2868;
+
+  /* Status */
+  --color-wait-100: #fbf1dc;
+  --color-wait-300: #f0d59a;
+  --color-wait-700: #9a6a12;
+  --color-done-100: #edf7f0;
+  --color-done-700: #2f6f4a;
+  --color-danger-100: #fcecec;
+  --color-danger-200: #f4cccc;
+  --color-danger-700: #a8242c;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-hair: 0 0 0 1px rgb(22 24 27 / 0.06);
+  --shadow-1: 0 1px 2px rgb(22 24 27 / 0.05), 0 0 0 1px rgb(22 24 27 / 0.05);
+  --shadow-2: 0 6px 16px -6px rgb(22 24 27 / 0.12), 0 1px 2px rgb(22 24 27 / 0.05), 0 0 0 1px rgb(22 24 27 / 0.05);
+  --shadow-3: 0 24px 48px -16px rgb(22 24 27 / 0.22), 0 0 0 1px rgb(22 24 27 / 0.06);
+  --shadow-ai: 0 0 0 1px rgb(106 98 208 / 0.22), 0 8px 24px -12px rgb(106 98 208 / 0.35);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --animate-fade-up: fade-up 320ms var(--ease-out) both;
+  --animate-fade-in: fade-in 200ms var(--ease-out) both;
+  --animate-pulse-dot: pulse-dot 1.8s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-scan: scan 1.6s var(--ease-in-out) infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(31 122 99 / 0.35);
+    }
+    60% {
+      box-shadow: 0 0 0 6px rgb(31 122 99 / 0);
+    }
+  }
+  @keyframes scan {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(400%);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/* shadcn semantic tokens mapped onto the palette above so ui/* primitives inherit the identity. */
+@theme inline {
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+}
+
+:root {
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-accent-700);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-surface-2);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-surface-2);
+  --muted-foreground: var(--color-ink-3);
+  --accent: var(--color-accent-50);
+  --accent-foreground: var(--color-accent-700);
+  --destructive: var(--color-danger-700);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-accent-500);
+  --radius: 8px;
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  html {
+    @apply font-sans;
+    font-feature-settings: "cv11", "ss01", "tnum" 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-ink;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  /* Fine paper grain on the canvas. Fixed so it never scrolls with content. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+  ::selection {
+    background: var(--color-accent-100);
+    color: var(--color-accent-900);
+  }
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+}
+
+@layer components {
+  /* Typography roles */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.016em;
+    line-height: 1.05;
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-3);
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Surfaces */
+  .panel {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-1);
+  }
+  .hairline {
+    box-shadow: var(--shadow-hair);
+  }
+
+  /* Content the model produced. A dotted rule on the left, never a bubble. */
+  .ai-surface {
+    background:
+      linear-gradient(180deg, rgb(244 243 252 / 0.7), rgb(255 255 255 / 0)) top / 100% 160px no-repeat,
+      var(--color-surface);
+  }
+  .ai-item {
+    border-color: var(--color-ai-200);
+    background: var(--color-ai-50);
+  }
+  .ai-item:focus-within {
+    border-color: var(--color-ai-500);
+    box-shadow: 0 0 0 3px rgb(106 98 208 / 0.16);
+  }
+  .doctor-item {
+    border-color: var(--color-line);
+    background: var(--color-surface);
+  }
+  .doctor-item:focus-within {
+    border-color: var(--color-accent-500);
+    box-shadow: 0 0 0 3px rgb(31 122 99 / 0.14);
+  }
+
+  .skeleton {
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--color-surface-2) 0%, #e9e7e2 40%, var(--color-surface-2) 80%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  /* Native dialog */
+  dialog::backdrop {
+    background: rgb(22 24 27 / 0.32);
+    backdrop-filter: blur(2px);
+  }
+  dialog[open] {
+    animation: dialog-in 200ms var(--ease-out);
+  }
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Floating chrome: a translucent material the content scrolls under. */
+@layer components {
+  .chrome,
+  .topbar {
+    background: rgb(246 245 242 / 0.82);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+  }
+  /* The top bar earns its edge only once content has scrolled beneath it. */
+  .topbar {
+    border-bottom: 1px solid var(--color-line);
+  }
+  @supports (animation-timeline: scroll()) {
+    .topbar {
+      border-bottom-color: transparent;
+      animation: topbar-edge linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 48px;
+    }
+    @keyframes topbar-edge {
+      to {
+        border-bottom-color: var(--color-line);
+        box-shadow: 0 8px 24px -16px rgb(22 24 27 / 0.18);
+      }
+    }
+  }
+
+  /* Native dialog: leaves along the path it arrived on. */
+  dialog[data-closing] {
+    animation: dialog-out 160ms var(--ease-in-out) forwards;
+  }
+  @keyframes dialog-out {
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .chrome,
+  .topbar {
+    background: var(--color-canvas);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .panel,
+  .ai-item,
+  .doctor-item {
+    box-shadow: none;
+    border: 1px solid var(--color-ink-3);
+  }
+  .eyebrow {
+    color: var(--color-ink-2);
+  }
+}
+
+/* Sign-in field: barely-there drift, nodes breathing out of phase. */
+.if-drift {
+  animation: if-drift 90s linear infinite;
+}
+.if-node {
+  animation: if-node 6s ease-in-out infinite;
+}
+@keyframes if-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes if-node {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
