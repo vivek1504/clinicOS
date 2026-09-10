@@ -1,8 +1,6 @@
 <!-- prettier-ignore -->
 <div align="center">
 
-<img src="./assets/logo.svg" alt="ClinicOS Logo" width="72" height="72" />
-
 # ClinicOS
 
 **High-performance, clinician-focused Electronic Medical Records (EMR) workspace with ambient AI consultation structuring.**
@@ -323,22 +321,3 @@ Lint and type validation:
 bun run lint
 bunx tsc --noEmit
 ```
-
----
-
-## Design System & Keyboard Navigation
-
-ClinicOS adheres to a minimal clinical palette designed to reduce cognitive fatigue:
-- **Warm Canvas** (`#F6F5F2`): Reduces eye strain under clinical lighting.
-- **Surgical Green** (`#125746`): Dedicated to doctor-initiated actions and confirmed records.
-- **Muted Iris** (`#6A62D0`): Exclusively reserved for unreviewed, AI-drafted outputs.
-- **High-Alert Red** (`#DC2626`): Strictly isolated to critical allergy warnings.
-
-### Keyboard Shortcuts
-
-| Shortcut | Context | Action |
-|---|---|---|
-| <kbd>Ctrl</kbd> + <kbd>Enter</kbd> / <kbd>⌘</kbd> + <kbd>Enter</kbd> | Rough notes editor | Trigger AI structuring pipeline |
-| <kbd>Ctrl</kbd> + <kbd>S</kbd> / <kbd>⌘</kbd> + <kbd>S</kbd> | Consultation workspace | Save finalized consultation record |
-| <kbd>Enter</kbd> | Structured note list fields | Add new item entry |
-| <kbd>Backspace</kbd> | Empty item input field | Remove preceding item entry |
