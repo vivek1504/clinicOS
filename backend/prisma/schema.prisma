@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AppointmentStatus {
+  WAITING
+  IN_CONSULTATION
+  COMPLETED
+}
+
+model Doctor {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String?
+  appointments  Appointment[]
+  consultations Consultation[]
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id
+  doctorId  String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+}
+
+model Patient {
+  id            String         @id @default(cuid())
+  name          String
+  dob           DateTime       @db.Date
+  gender        Gender
+  phone         String
+  allergies     String[]       @default([])
+  conditions    String[]       @default([])
+  appointments  Appointment[]
+  consultations Consultation[]
+
+  @@index([name])
+}
+
+model Appointment {
+  id           String            @id @default(cuid())
+  patientId    String
+  doctorId     String
+  scheduledAt  DateTime
+  reason       String
+  status       AppointmentStatus @default(WAITING)
+  patient      Patient           @relation(fields: [patientId], references: [id])
+  doctor       Doctor            @relation(fields: [doctorId], references: [id])
+  consultation Consultation?
+
+  @@index([scheduledAt])
+  @@index([doctorId, scheduledAt])
+}
+
+model Consultation {
+  id              String       @id @default(cuid())
+  patientId       String
+  doctorId        String
+  appointmentId   String?      @unique
+  clientRequestId String?      @unique
+  createdAt       DateTime     @default(now())
+  rawNotes        String
+  aiDraft         Json?
+  finalNote       Json
+  aiModel         String?
+  aiLatencyMs     Int?
+  wasAiUsed       Boolean      @default(false)
+  wasAiEdited     Boolean      @default(false)
+  patient         Patient      @relation(fields: [patientId], references: [id])
+  doctor          Doctor       @relation(fields: [doctorId], references: [id])
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([patientId, createdAt(sort: Desc)])
+}
