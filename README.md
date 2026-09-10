@@ -145,7 +145,14 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 - [Bun](https://bun.sh) (v1.4+)
 - [Docker](https://www.docker.com) & Docker Compose
 
-### 1. Start the Database
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/vivek1504/clinicOS
+cd clinicOS
+```
+
+### 2. Start the Database
 
 From the repository root:
 
@@ -159,7 +166,7 @@ bun run db:up
 > [!NOTE]
 > `bun run db:up` starts a PostgreSQL 16 container exposing port `5432` with two pre-configured databases: `emr` (development) and `emr_test` (test suite).
 
-### 2. Initialize and Seed Database
+### 3. Initialize and Seed Database
 
 ```bash
 # Run schema migrations
@@ -169,7 +176,7 @@ bun run db:migrate
 bun run db:seed
 ```
 
-### 3. Start Backend API
+### 4. Start Backend API
 
 ```bash
 bun run dev
@@ -178,7 +185,7 @@ bun run dev
 The backend starts on `http://localhost:3001`.
 Interactive Swagger documentation is available at `http://localhost:3001/swagger`.
 
-### 4. Start Frontend Client
+### 5. Start Frontend Client
 
 Open a new terminal window:
 
