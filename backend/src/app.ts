@@ -9,10 +9,17 @@ import { patientRoutes } from "./routes/patients";
 import { consultationRoutes } from "./routes/consultations";
 import { aiRoutes } from "./routes/ai";
 import { authRoutes, requireDoctor, sessionPlugin } from "./auth";
+import { GeminiProvider } from "./ai/gemini.provider";
+import { FakeAiProvider } from "./ai/fake.provider";
 
 export const buildApp = (deps: { ai: AiProvider }) =>
   new Elysia()
-    .use(cors({ origin: env.CORS_ORIGIN, credentials: true }))
+    .use(
+      cors({
+        origin: env.CORS_ORIGIN === "*" || env.CORS_ORIGIN === "true" ? true : env.CORS_ORIGIN,
+        credentials: true,
+      })
+    )
     .use(swagger())
     .error({ AppError })
     .onError(({ code, error, set }) => {
@@ -62,3 +69,12 @@ export const buildApp = (deps: { ai: AiProvider }) =>
     .use(patientRoutes)
     .use(consultationRoutes)
     .use(aiRoutes(deps.ai));
+
+const defaultAi: AiProvider =
+  env.AI_PROVIDER === "fake"
+    ? new FakeAiProvider()
+    : new GeminiProvider();
+
+export const app = buildApp({ ai: defaultAi });
+export default app;
+

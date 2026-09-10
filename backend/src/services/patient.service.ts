@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../lib/errors";
 import { getAge } from "../lib/dates";
-import { Gender } from "../generated/prisma/enums";
+import { Gender } from "@prisma/client";
 
 export interface PatientDtoType {
   id: string;

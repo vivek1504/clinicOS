@@ -1,5 +1,5 @@
 import { t } from "elysia";
-import { AppointmentStatus } from "../generated/prisma/enums";
+import { AppointmentStatus } from "@prisma/client";
 
 export { AppointmentStatus };
 

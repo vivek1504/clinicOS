@@ -1,5 +1,5 @@
 import { t } from "elysia";
-import { Gender } from "../generated/prisma/enums";
+import { Gender } from "@prisma/client";
 
 export { Gender };
 

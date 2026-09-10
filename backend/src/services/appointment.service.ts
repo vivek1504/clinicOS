@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../lib/errors";
 import { getDayRange } from "../lib/dates";
-import { AppointmentStatus } from "../generated/prisma/enums";
+import { AppointmentStatus } from "@prisma/client";
 
 export interface AppointmentDtoType {
   id: string;

@@ -1,4 +1,4 @@
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const connectionString = process.env.DATABASE_URL;
@@ -607,7 +607,7 @@ async function seed() {
         create: c,
       });
     }
-  });
+  }, { maxWait: 20000, timeout: 60000 });
 
   console.log("Seeding completed successfully!");
 }

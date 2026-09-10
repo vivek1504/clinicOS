@@ -1,18 +1,13 @@
+import { Elysia } from "elysia";
 import { env } from "./env";
-import { buildApp } from "./app";
-import { GeminiProvider } from "./ai/gemini.provider";
-import { FakeAiProvider } from "./ai/fake.provider";
-import type { AiProvider } from "./ai/provider";
+import { app, buildApp } from "./app";
 
-const ai: AiProvider =
-  env.AI_PROVIDER === "fake"
-    ? new FakeAiProvider()
-    : new GeminiProvider();
+if (process.env.NODE_ENV !== "production" || (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME)) {
+  app.listen(env.PORT, () => {
+    console.log(`EMR Backend listening on port ${env.PORT} (AI provider: ${env.AI_PROVIDER})`);
+  });
+}
 
-const app = buildApp({ ai });
+export { app, buildApp };
+export default app;
 
-app.listen(env.PORT, () => {
-  console.log(`EMR Backend listening on port ${env.PORT} (AI provider: ${env.AI_PROVIDER})`);
-});
-
-export { app };
