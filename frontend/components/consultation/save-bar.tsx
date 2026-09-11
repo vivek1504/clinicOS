@@ -40,13 +40,13 @@ export function SaveBar({
               <span className="inline-flex items-center gap-1.5">
                 <span
                   aria-hidden="true"
-                  className={`size-1.5 rounded-full transition-colors duration-300 ${dirty ? "bg-wait-700" : "bg-line-strong"}`}
+                  className={`size-1.5 rounded-full transition-colors duration-300 ${saving ? "bg-accent-500 animate-pulse-dot" : dirty ? "bg-wait-700" : "bg-line-strong"}`}
                 />
-                {dirty ? "Unsaved" : "Nothing to save yet"}
+                {saving ? "Saving…" : dirty ? "Unsaved" : "Nothing to save yet"}
               </span>
               {wasAiUsed ? (
                 <span className={unreviewedAi > 0 ? "text-ai-700" : "text-accent-700"}>
-                  {unreviewedAi > 0 ? `${pluralize(unreviewedAi, "item")} to review` : "All items reviewed"}
+                  {unreviewedAi > 0 ? `${pluralize(unreviewedAi, "item")} to review` : "Ready to record"}
                 </span>
               ) : null}
               <span className="hidden items-center gap-1 text-ink-3 lg:inline-flex">

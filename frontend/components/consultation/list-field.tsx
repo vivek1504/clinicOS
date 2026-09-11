@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PlusIcon, XIcon } from "lucide-react";
 import { SPRING_QUICK } from "@/components/shared/reveal";
-import { AiDot } from "@/components/shared/source-mark";
 import type { Item } from "./draft-model";
 
 export function ListField({
@@ -15,6 +14,7 @@ export function ListField({
   onAdd,
   onEdit,
   onRemove,
+  onItemFocus,
 }: {
   id: string;
   label: string;
@@ -23,6 +23,8 @@ export function ListField({
   onAdd: (value: string) => void;
   onEdit: (itemId: string, value: string) => void;
   onRemove: (itemId: string) => void;
+  /** The row under the pointer or cursor, or null when none; the notes panel highlights its source. */
+  onItemFocus?: (value: string | null) => void;
 }) {
   const [draft, setDraft] = useState("");
   const addRef = useRef<HTMLInputElement>(null);
@@ -60,15 +62,15 @@ export function ListField({
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? undefined : { opacity: 0, x: 8, transition: { duration: 0.16 } }}
               transition={SPRING_QUICK}
-              className={`group/item flex items-center gap-2 rounded-md border pl-3 transition-[background-color,border-color,box-shadow] duration-200 ${
+              className={`group/item flex items-center gap-2 rounded-r-md border-l-2 pl-3 transition-[background-color,border-color,box-shadow] duration-200 ${
                 item.source === "ai" ? "ai-item" : "doctor-item"
               }`}
+              onMouseEnter={() => onItemFocus?.(item.value)}
+              onMouseLeave={() => onItemFocus?.(null)}
+              onFocus={() => onItemFocus?.(item.value)}
+              onBlur={() => onItemFocus?.(null)}
             >
-              {item.source === "ai" ? (
-                <AiDot />
-              ) : (
-                <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-accent-500" />
-              )}
+              {item.source === "ai" ? <span className="sr-only">AI draft: </span> : null}
               <input
                 aria-label={`${label} item ${idx + 1}`}
                 value={item.value}
@@ -79,16 +81,16 @@ export function ListField({
                     onRemove(item.id);
                   }
                 }}
-                className="h-9 min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none"
+                className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none"
               />
               {item.edited ? (
-                <span className="hidden shrink-0 text-[11px] font-medium text-accent-700 sm:inline">Doctor edited</span>
+                <span className="sr-only">Doctor edited</span>
               ) : null}
               <button
                 type="button"
                 onClick={() => onRemove(item.id)}
                 aria-label={`Remove ${singular}: ${item.value}`}
-                className="flex size-9 shrink-0 items-center justify-center rounded-r-md text-ink-3 opacity-60 transition-[opacity,color,background-color] duration-150 group-hover/item:opacity-100 hover:bg-ink/5 hover:text-ink focus-visible:opacity-100"
+                className="flex size-9 shrink-0 items-center justify-center rounded-r-md text-ink-3 opacity-0 transition-[opacity,color,background-color] duration-150 group-hover/item:opacity-100 group-focus-within/item:opacity-100 hover:bg-ink/5 hover:text-ink focus-visible:opacity-100"
               >
                 <XIcon className="size-3.5" aria-hidden="true" />
               </button>
@@ -96,7 +98,7 @@ export function ListField({
           ))}
         </AnimatePresence>
 
-        <li className="flex items-center gap-2 rounded-md border border-dashed border-line-strong pl-3 transition-colors duration-150 focus-within:border-accent-500 focus-within:bg-surface hover:border-ink-4">
+        <li className="flex items-center gap-2 border-l-2 border-transparent pl-3 transition-colors duration-150 focus-within:border-accent-500 focus-within:bg-surface hover:bg-surface-2">
           <PlusIcon className="size-3.5 shrink-0 text-ink-3" aria-hidden="true" />
           <input
             ref={addRef}

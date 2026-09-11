@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { ApiError } from "@/lib/api/client";
 import { createConsultation } from "@/lib/api/consultations";
 import type { ConsultationDto, PatientDto } from "@/lib/api/types";
 import { useGuardedRouter } from "@/lib/navigation-blocker";
+import { findSpan, spansFor } from "@/lib/evidence";
 import { AiPanel, type AiPanelMode } from "./ai-panel";
 import { ContextRail } from "./context-rail";
 import { countUnreviewedAi, hasFormContent, isEdited, toFinalNote } from "./draft-model";
@@ -52,6 +53,8 @@ export function ConsultationWorkspace({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<ApiError | null>(null);
   const [blockedBy, setBlockedBy] = useState<Blocker | null>(null);
+  const [flash, setFlash] = useState(false);
+  const [activeItem, setActiveItem] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
@@ -96,6 +99,27 @@ export function ConsultationWorkspace({
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Focus mode: while a consultation is open the site footer steps back. The attribute is styled in globals.css.
+  useEffect(() => {
+    document.documentElement.dataset.focus = "consultation";
+    return () => {
+      delete document.documentElement.dataset.focus;
+    };
+  }, []);
+
+  // The transformation: when a draft lands, the phrases it was built from light up in the notes for a moment.
+  const aiValues = useMemo(() => {
+    const d = state.draft;
+    return [d.chiefComplaint, ...d.symptoms, ...d.relevantHistory, ...d.medicationsMentioned, ...d.doctorPlan].filter((i) => i.source === "ai").map((i) => i.value);
+  }, [state.draft]);
+  const highlights = useMemo(() => (flash ? spansFor(state.rawNotes, aiValues) : []), [flash, state.rawNotes, aiValues]);
+  const activeSpan = useMemo(() => (activeItem ? findSpan(state.rawNotes, activeItem) : null), [activeItem, state.rawNotes]);
+  useEffect(() => {
+    if (!flash) return;
+    const id = setTimeout(() => setFlash(false), 2600);
+    return () => clearTimeout(id);
+  }, [flash]);
+
   const runGenerate = useCallback(async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -106,6 +130,7 @@ export function ConsultationWorkspace({
       if (abortRef.current !== controller) return;
       dispatch({ type: "AI_SUCCESS", response });
       setManual(false);
+      setFlash(true);
     } catch (err) {
       if (abortRef.current !== controller) return;
       if (err instanceof ApiError && err.code === AI_CANCELLED) {
@@ -217,14 +242,14 @@ export function ConsultationWorkspace({
           <ArrowLeftIcon className="size-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden="true" />
           {patient.name}
         </SafeLink>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="display text-[30px] text-ink sm:text-[34px]">New consultation</h1>
-            <p className="mt-1 text-[14px] text-ink-3" suppressHydrationWarning>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <h1 className="display text-[26px] text-ink">New consultation</h1>
+            <p className="text-[13px] text-ink-3" suppressHydrationWarning>
               {LONG_DATE.format(new Date())}
             </p>
           </div>
-          {appointmentId ? <StatusBadge status="IN_CONSULTATION" className="mb-1.5" /> : <span className="mb-2 text-[13px] text-ink-3">Unscheduled visit</span>}
+          {appointmentId ? <StatusBadge status="IN_CONSULTATION" /> : <span className="text-[13px] text-ink-3">Unscheduled visit</span>}
         </div>
       </div>
 
@@ -269,7 +294,14 @@ export function ConsultationWorkspace({
         </div>
       ) : null}
 
-      <div className="grid items-start gap-5 lg:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] xl:items-stretch">
+      {/* Desktop columns follow the task: writing gets the room until a draft exists, then reviewing does. The shift is the transformation. */}
+      <div
+        className={`grid items-start gap-5 xl:min-h-0 xl:flex-1 xl:items-stretch motion-safe:transition-[grid-template-columns] motion-safe:duration-500 motion-safe:ease-out ${
+          mode === "empty"
+            ? "lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[200px_minmax(0,1fr)_260px]"
+            : "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:grid-cols-[200px_minmax(0,2fr)_minmax(0,3fr)]"
+        }`}
+      >
         <ContextRail patient={patient} history={history} className="lg:col-span-2 xl:col-span-1" />
 
         <NotesPanel
@@ -280,6 +312,8 @@ export function ConsultationWorkspace({
           hasDraft={state.aiDraft !== null}
           notesChangedSinceDraft={state.notesChangedSinceDraft}
           textareaRef={notesRef}
+          highlights={highlights}
+          activeSpan={activeSpan}
         />
 
         <AiPanel
@@ -307,6 +341,8 @@ export function ConsultationWorkspace({
             onItemEdit={(field, id, value) => dispatch({ type: "ITEM_EDIT", field, id, value })}
             onItemRemove={(field, id) => dispatch({ type: "ITEM_REMOVE", field, id })}
             onRestorePrevious={state.previous ? () => dispatch({ type: "RESTORE_PREVIOUS" }) : undefined}
+            onItemFocus={setActiveItem}
+            draftVersion={state.draftVersion}
             firstFieldRef={firstFieldRef}
           />
         </AiPanel>

@@ -13,8 +13,8 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
   const last = history.length ? [...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] : null;
 
   return (
-    <aside aria-labelledby="ctx-h" className={`panel xl:self-start ${className}`}>
-      <div className="flex items-center justify-between gap-3 px-5 py-4">
+    <aside aria-labelledby="ctx-h" className={`max-xl:rounded-lg max-xl:bg-surface max-xl:shadow-1 max-md:sticky max-md:top-[52px] max-md:z-10 xl:self-start xl:border-r xl:border-line xl:pr-5 ${className}`}>
+      <div className="flex items-center justify-between gap-3 px-5 py-4 xl:px-0 xl:pt-1">
         <div>
           <h2 id="ctx-h" className="text-[15px] font-semibold tracking-[-0.01em] text-ink">
             {patient.name}
@@ -22,6 +22,12 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
           <p className="mt-0.5 text-[13px] text-ink-3">
             {patient.age} · {formatGender(patient.gender)}
           </p>
+          {/* Phones collapse the rail, but an allergy must never be behind a toggle. */}
+          {patient.allergies.length && !open ? (
+            <p className="mt-1 text-[13px] font-medium text-danger-700 md:hidden">
+              {patient.allergies.length === 1 ? "Allergy" : "Allergies"}: {patient.allergies.join(", ")}
+            </p>
+          ) : null}
         </div>
         {/* Phones only: the context collapses. From md up it is always visible, so no toggle is rendered. */}
         <button
@@ -38,7 +44,7 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
 
       <dl
         id="ctx-body"
-        className={`${open ? "grid" : "hidden"} grid-cols-2 gap-px border-t border-line bg-line md:grid md:grid-cols-4 xl:grid-cols-1`}
+        className={`${open ? "grid" : "hidden"} grid-cols-2 gap-px border-t border-line bg-line md:grid md:grid-cols-4 xl:grid-cols-1 xl:gap-0 xl:divide-y xl:divide-line xl:bg-transparent`}
       >
         <Item label={patient.allergies.length === 1 ? "Allergy" : "Allergies"} tone={patient.allergies.length ? "danger" : "quiet"}>
           {patient.allergies.length ? patient.allergies.join(", ") : "No known allergies"}
@@ -62,9 +68,9 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
       </dl>
 
       {/* Guarded link: leaving with unsaved notes still asks first. */}
-      <div className="border-t border-line px-5 py-3">
+      <div className="border-t border-line px-5 py-3 xl:px-0">
         <Button variant="secondary" size="sm" className="w-full" render={<SafeLink href={`/patients/${patient.id}`} />}>
-          Full patient record
+          Open patient record
           <ArrowRightIcon />
         </Button>
       </div>
@@ -74,7 +80,7 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
 
 function Item({ label, tone, children }: { label: string; tone?: "danger" | "quiet"; children: React.ReactNode }) {
   return (
-    <div className="min-w-0 bg-surface px-5 py-3.5">
+    <div className="min-w-0 bg-surface px-5 py-3.5 xl:bg-transparent xl:px-0">
       <dt className="eyebrow">{label}</dt>
       <dd className={`mt-1 text-[14px] leading-snug ${tone === "danger" ? "font-medium text-danger-700" : tone === "quiet" ? "text-ink-3" : "font-medium text-ink"}`}>
         {children}
