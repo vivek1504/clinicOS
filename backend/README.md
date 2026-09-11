@@ -1,6 +1,6 @@
-# EMR Backend — ElysiaJS + Prisma + PostgreSQL + Gemini
+# EMR Backend — ElysiaJS + Prisma + PostgreSQL + OpenRouter
 
-Type-safe clinic backend built with Bun, Elysia, Prisma 7, PostgreSQL, and Google Gemini. Two roles (doctor, receptionist), a per-doctor queue with one patient in the room at a time, and an AI pipeline that structures consultation notes.
+Type-safe clinic backend built with Bun, Elysia, Prisma 7, PostgreSQL, and OpenRouter. Two roles (doctor, receptionist), a per-doctor queue with one patient in the room at a time, and an AI pipeline that structures consultation notes.
 
 ---
 
@@ -59,26 +59,26 @@ bun run typecheck
 
 ---
 
-## Environment Variables & Gemini AI
+## Environment Variables & AI
 
 | Variable | Description | Default |
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string for primary database | `postgresql://emr:emr@localhost:5432/emr` |
 | `TEST_DATABASE_URL` | PostgreSQL connection string for test suite | `postgresql://emr:emr@localhost:5432/emr_test` |
-| `GEMINI_API_KEY` | Google Gemini API key (optional for startup/demos) | `""` |
-| `AI_PROVIDER` | Active AI provider (`gemini` or `fake`) | `gemini` |
-| `AI_MODEL` | Gemini model ID | `gemini-2.5-flash` |
-| `AI_TIMEOUT_MS` | Upstream Gemini call timeout in ms | `20000` |
+| `OPENROUTER_API_KEY` | OpenRouter API key (optional for startup/demos) | `""` |
+| `AI_PROVIDER` | Active AI provider (`openrouter` or `fake`) | `openrouter` |
+| `AI_MODEL` | Any OpenRouter model ID, e.g. `openai/gpt-4o-mini`, `google/gemini-2.5-flash`, `anthropic/claude-sonnet-5` | `openai/gpt-4o-mini` |
+| `AI_TIMEOUT_MS` | Upstream AI call timeout in ms | `20000` |
 | `PORT` | HTTP server port | `3001` |
 | `CORS_ORIGIN` | Allowed CORS origin (Frontend) | `http://localhost:3000` |
 
 ### Working Without an API Key
 
-- If `GEMINI_API_KEY` is left blank while `AI_PROVIDER=gemini`:
+- If `OPENROUTER_API_KEY` is left blank while `AI_PROVIDER=openrouter`:
   - The server boots normally.
   - All non-AI endpoints (appointments, patients, consultations) remain fully operational.
   - The `/ai/structure-consultation` route returns `503 Service Unavailable` with `AI_UNAVAILABLE`, allowing doctors to manually write and save consultation notes without disruption.
-- Set `AI_PROVIDER=fake` in `.env` to enable full end-to-end clinical note structuring and AI draft demos without requiring an external Gemini API key.
+- Set `AI_PROVIDER=fake` in `.env` to enable full end-to-end clinical note structuring and AI draft demos without requiring an external API key.
 
 ---
 
@@ -100,7 +100,8 @@ Cookie sessions, no external dependency:
 | | Doctor | Receptionist |
 | --- | --- | --- |
 | Schedule, patients, doctors list | ✓ | ✓ |
-| Register and edit patients, book, reschedule, cancel, check in | ✓ | ✓ |
+| Register and edit patients, book, reschedule, cancel | ✓ | ✓ |
+| Check in, mark arrived, add a walk-in (`BOOKED`/`NO_SHOW` → `WAITING`) | | ✓ |
 | Mark a patient absent (`NO_SHOW`) | | ✓ |
 | Put a patient in the room, step out, complete | ✓ | |
 | Read consultation history, save consultations, AI endpoints | ✓ | |
@@ -123,8 +124,9 @@ BOOKED ──check in──▶ WAITING ──start──▶ IN_CONSULTATION ─�
 
 - `BOOKED` is on the schedule but not checked in. It never blocks anyone.
 - **One in the room.** A doctor can have one `IN_CONSULTATION` appointment. Enforced by the partial unique index `Appointment_one_active_per_doctor`; a second simultaneous start gets `409 ALREADY_IN_CONSULTATION` with the room holder in `details`.
-- **Queue order.** A patient may start only when nobody is in the room and every `WAITING` appointment booked earlier that day is done. Otherwise `409 QUEUE_ORDER` names who is first. `NO_SHOW` and `CANCELLED` leave the queue without moving anyone's time; a returning no-show may go straight in when the room is free.
-- **One per slot.** `Appointment_doctor_slot` makes `(doctorId, scheduledAt)` unique among non-cancelled appointments: double-booking and rescheduling into a taken slot return `409 CONFLICT`. Booking a time in the past returns `400 VALIDATION` (five-minute grace for walk-ins).
+- **Queue order.** A patient may start only when nobody is in the room and every `WAITING` appointment booked earlier that day is done. Otherwise `409 QUEUE_ORDER` names who is first. `NO_SHOW` and `CANCELLED` leave the queue without moving anyone's time; a returning no-show is checked in by the front desk and then starts like anyone else.
+- **Slots are 15 minutes.** Scheduled times must sit on the quarter hour (`400 VALIDATION` otherwise), and `Appointment_doctor_slot` makes `(doctorId, scheduledAt)` unique among non-cancelled appointments, so a 3:00 booking leaves 3:15 as the next slot and double-booking returns `409 CONFLICT`. Booking a time in the past returns `400` (five-minute grace). Walk-ins are recorded at the exact moment and skip the grid.
+- **One open appointment per patient per day.** A patient with a `BOOKED`, `WAITING` or `IN_CONSULTATION` appointment that day cannot be booked again until it is completed, marked absent or cancelled (`409 CONFLICT` naming the existing time).
 - Saving a consultation for a `WAITING` or `BOOKED` appointment runs the same room and queue checks, so the rules cannot be bypassed by skipping "start". Saving completes the appointment.
 
 Both partial indexes are hand-written in `prisma/migrations` because Prisma's schema language cannot express them; `prisma migrate diff` ignores them, so they survive future migrations. The transition table and who may perform each move is `TRANSITIONS` in `src/services/appointment.service.ts`; the room and queue check is `src/services/queue.ts`.
@@ -135,7 +137,7 @@ Both partial indexes are hand-written in `prisma/migrations` because Prisma's sc
 - `PATCH /appointments/:id` with `{ scheduledAt?, reason? }` reschedules (refused once the appointment is `IN_CONSULTATION` or `COMPLETED`); with `{ status }` it moves state according to the transition table and the caller's role.
 - `GET /appointments?patientId=…` → every appointment for one patient, newest first, ignoring the day window.
 - `GET /doctors` → bookable staff.
-- `POST /patients` → `201`, or `409 CONFLICT` with `{ patientId, name }` in `details` when the phone number already exists; send `allowDuplicate: true` to override. `PATCH /patients/:id` edits demographics, allergies and conditions. `GET /patients?q=` matches names and phone digits.
+- `POST /patients` → `201`, or `409 CONFLICT` with `{ patientId, name }` in `details` when the phone number already exists, so the desk opens that record instead. `PATCH /patients/:id` edits demographics, allergies and conditions. `GET /patients?q=` matches names and phone digits.
 
 ## Architecture
 
@@ -157,11 +159,11 @@ Both partial indexes are hand-written in `prisma/migrations` because Prisma's sc
             │                                     │
             │                           ┌─────────┴─────────┐
             │                           ▼                   ▼
-            │                   [ GeminiProvider ]  [ FakeAiProvider ]
-            │                    (Google GenAI)
+            │                  [ OpenRouterProvider ] [ FakeAiProvider ]
+            │                    (chat completions)
             │                           │
             ▼                           ▼
-      [ Prisma 7 ]             [ Gemini 2.5 Flash ]
+      [ Prisma 7 ]             [ model from AI_MODEL ]
    (@prisma/adapter-pg)
             │
             ▼
@@ -170,8 +172,8 @@ Both partial indexes are hand-written in `prisma/migrations` because Prisma's sc
 
 ### AI Structuring Pipeline & Validation
 
-1. **Provider Isolation**: All LLM interactions are wrapped behind the `AiProvider` interface (`GeminiProvider` and `FakeAiProvider`).
-2. **Deterministic Output**: Uses `responseMimeType: "application/json"` with schema constraints and `temperature: 0`.
+1. **Provider Isolation**: All LLM interactions are wrapped behind the `AiProvider` interface (`OpenRouterProvider` and `FakeAiProvider`). OpenRouter speaks the OpenAI chat-completions API over plain `fetch`, so the model is a config value and there is no vendor SDK.
+2. **Deterministic Output**: Sends `response_format: json_schema` (strict) with `temperature: 0`; if the chosen model rejects the schema the request is retried without it and the normalizer takes over.
 3. **Fence & Prose Stripping**: Removes markdown backticks (```` ```json ````) or extraneous model commentary.
 4. **Lenient Coercion & Strict Validation**:
    - `LooseNoteSchema`: Permissively parses fields and strictly rejects unrecognized keys.

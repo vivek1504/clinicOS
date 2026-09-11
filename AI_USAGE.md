@@ -49,7 +49,7 @@ Used during the visual design/prototyping process by claude
 
 ### 2. AI Structured-Output Design
 
-> "Write a strict system prompt and schema for Gemini 2.5 Flash that
+> "Write a strict system prompt and schema for an LLM that
 > converts unstructured doctor shorthand into a structured clinical JSON
 > object containing chief complaint, symptoms, relevant history,
 > medications, doctor plan, and missing information. Do not infer
@@ -121,5 +121,5 @@ flowchart LR
     A[Next.js] -->|HTTP / JSON| B[ElysiaJS API]
     B --> C[(PostgreSQL)]
     B --> D[AI Provider]
-    D --> E[Gemini]
+    D --> E[OpenRouter]
 ```

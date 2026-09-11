@@ -10,7 +10,7 @@
 [![Backend: ElysiaJS](https://img.shields.io/badge/Backend-ElysiaJS-violet?style=flat-square&logo=elysia)](https://elysiajs.com)
 [![Database: PostgreSQL 16](https://img.shields.io/badge/Database-PostgreSQL%2016-blue?style=flat-square&logo=postgresql)](https://www.postgresql.org)
 [![ORM: Prisma 7](https://img.shields.io/badge/ORM-Prisma%207-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io)
-[![Model: Gemini 2.5 Flash](https://img.shields.io/badge/AI-Google%20Gemini%202.5%20Flash-4285F4?style=flat-square&logo=google)](https://ai.google.dev)
+[![AI: OpenRouter](https://img.shields.io/badge/AI-OpenRouter-6467F2?style=flat-square)](https://openrouter.ai)
 [![Language: TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 
 <br />
@@ -40,7 +40,7 @@ sequenceDiagram
     actor Doctor
     participant UI as Next.js Workspace
     participant API as Elysia Backend
-    participant LLM as Gemini 2.5 Flash
+    participant LLM as LLM via OpenRouter
     participant DB as PostgreSQL (Prisma 7)
 
     Note over Doctor,API: Front desk has checked the patient in (BOOKED → WAITING)
@@ -101,8 +101,8 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
                ▼                              ▼
 ┌──────────────────────────────┐ ┌────────────────────────────┐
 │      Prisma 7 + PG Driver    │ │   AI Provider Layer        │
-│   PostgreSQL 16 Database     │ │  ├─ GeminiProvider         │
-│   (emr & emr_test schemas)   │ │  │   (gemini-2.5-flash)    │
+│   PostgreSQL 16 Database     │ │  ├─ OpenRouterProvider     │
+│   (emr & emr_test schemas)   │ │  │   (model = AI_MODEL)    │
 │   Partial unique indexes for │ │  └─ FakeAiProvider (Mock)  │
 │   one room / one slot        │ │                            │
 └──────────────────────────────┘ └────────────────────────────┘
@@ -126,7 +126,7 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 
 - **Two roles, enforced server-side**: Every signed-in user carries a `DOCTOR` or `RECEPTIONIST` role. Consultations, patient history and every AI endpoint answer `403 FORBIDDEN` to the front desk; only a doctor can put a patient in the room or complete a visit; only the front desk can mark someone absent. The frontend redirects each role to its own home.
 - **Appointment states and queue rules**: `BOOKED → WAITING → IN_CONSULTATION → COMPLETED`, plus `NO_SHOW` and `CANCELLED`. A doctor can have one patient in the room, and a checked-in patient starts only when everyone checked in earlier is done. Both rules are enforced by the backend, the first one race-safely by a partial unique index, and surfaced in the UI as disabled actions with a reason.
-- **Front desk workflow**: Register patients (duplicate phone numbers are refused unless overridden), book and reschedule (past times and double-booked slots are refused), check in, mark absent, restore, cancel with confirmation.
+- **Front desk workflow**: Register patients (one record per phone number; a match points to the existing patient), book and reschedule (past times and double-booked slots are refused), check in, mark absent, restore, cancel with confirmation.
 - **Clinician-in-the-Loop Provenance**: Every field and list item maintains an explicit `source: "ai" | "doctor"` tag. AI-drafted items sit on a muted iris tint; editing one flips it to doctor styling ("Doctor edited"). The provenance is also announced to screen readers.
 - **Draft safety**: Regenerating keeps the previous draft one click away. Saving with an empty structured note asks first, so a notes-only visit is a choice, not an accident. A same-tab reload restores the draft without a prompt.
 - **Idempotent Consultations**: The consultation editor mints a unique `clientRequestId` per session. Network retries, double-clicks, or crash restores resolve idempotently to the same database record.
@@ -141,12 +141,12 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 
 | Screen | Route | Key Functionality |
 |---|---|---|
-| **Doctor dashboard** | `/` | Today's queue with status filters (Booked, Waiting, In consultation, Completed, plus No show and Cancelled when present). The next patient's row is the only enabled Start; rows behind it are disabled with the reason. Booked rows offer "Arrived". Up-next card with allergies and conditions. |
+| **Doctor dashboard** | `/` | Today's queue with status filters (Booked, Waiting, In consultation, Completed, plus No show and Cancelled when present). The next checked-in patient's row is the only enabled Start; rows behind it are disabled with the reason. Booked and absent rows say the front desk marks arrival. Up-next card with allergies and conditions. |
 | **Patient record** | `/patients/[id]` | Identity, allergies, conditions and medications mentioned in notes, then the clinical timeline with side-by-side AI draft comparison. The front desk sees identity, allergies, conditions and the patient's appointments instead; clinical notes are never sent to them. |
 | **Consultation workspace** | `/patients/[id]/consultation` | Three columns: patient context, doctor notes, editable draft. The page takes the room on open and releases it on leave. Redirects to the record once the appointment is completed. |
-| **Front desk** | `/front-desk` | The day's schedule with per-row Check in / Arrived / Restore and a More menu for Mark absent, Reschedule and Cancel. Register and Book actions, walk-in shortcut, patient directory. |
+| **Front desk** | `/front-desk` | The day's schedule with per-row Check in / Arrived / Restore (arrival is only ever recorded here or by a walk-in) and a More menu for Mark absent, Reschedule and Cancel. Register and Book actions, walk-in shortcut, patient directory. |
 | **Book / Reschedule** | `/front-desk/book` | Patient, doctor (when more than one), native date and time, reason. Shows what the doctor already has that day; refuses past times and taken slots. |
-| **Register / Edit patient** | `/front-desk/patients/new`, `/front-desk/patients/[id]/edit` | Demographics, allergies and conditions. A phone match offers the existing record or an explicit override. |
+| **Register / Edit patient** | `/front-desk/patients/new`, `/front-desk/patients/[id]/edit` | Demographics, allergies and conditions. A phone match points to the existing record. |
 | **Sign-in** | `/sign-in` | One form for both roles; each lands on its own home. Honours `?next=` and recovers when a session expires mid-use. |
 
 ---
@@ -229,15 +229,15 @@ The frontend will be running on `http://localhost:3000`.
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://emr:emr@localhost:5432/emr` |
 | `TEST_DATABASE_URL` | PostgreSQL test database connection string | `postgresql://emr:emr@localhost:5432/emr_test` |
-| `GEMINI_API_KEY` | Google Gemini API key | `""` |
-| `AI_PROVIDER` | Active AI provider (`gemini` or `fake`) | `gemini` |
-| `AI_MODEL` | Google Gemini model identifier | `gemini-2.5-flash` |
+| `OPENROUTER_API_KEY` | OpenRouter API key | `""` |
+| `AI_PROVIDER` | Active AI provider (`openrouter` or `fake`) | `openrouter` |
+| `AI_MODEL` | OpenRouter model identifier (any chat model, e.g. `openai/gpt-4o-mini`) | `openai/gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Upstream AI request timeout in milliseconds | `20000` |
 | `PORT` | API server port | `3001` |
 | `CORS_ORIGIN` | Allowed cross-origin source | `http://localhost:3000` |
 
 > [!IMPORTANT]
-> If `GEMINI_API_KEY` is omitted while `AI_PROVIDER=gemini`, all core patient and consultation services function normally. AI endpoints will return `503 AI_UNAVAILABLE` with clear actionable UI states. To run AI structuring offline, switch to `AI_PROVIDER=fake`.
+> If `OPENROUTER_API_KEY` is omitted while `AI_PROVIDER=openrouter`, all core patient and consultation services function normally. AI endpoints will return `503 AI_UNAVAILABLE` with clear actionable UI states. To run AI structuring offline, switch to `AI_PROVIDER=fake`.
 
 ### Frontend (`frontend/.env`)
 
@@ -259,7 +259,7 @@ The frontend will be running on `http://localhost:3000`.
 │   │   ├── staff.ts            # The two demo accounts, shared by the seed and the deploy step
 │   │   └── ensure-staff.ts     # Run on every deploy: upserts staff, touches nothing else
 │   ├── src/
-│   │   ├── ai/                 # Gemini provider, fake provider, prompt templates, normalizers
+│   │   ├── ai/                 # OpenRouter provider, fake provider, prompt templates, normalizers
 │   │   ├── lib/                # Prisma client singleton, domain errors, date utilities
 │   │   ├── routes/             # REST endpoints (auth, appointments, patients, consultations, staff, ai)
 │   │   ├── schemas/            # TypeBox validation schemas
@@ -304,7 +304,7 @@ Every endpoint except `/health` and `/auth/*` needs a session cookie. The **Who*
 | `PATCH` | `/appointments/:id` | by transition | `{ status }` to move state, or `{ scheduledAt, reason }` to reschedule. `IN_CONSULTATION`, `COMPLETED` and stepping out are doctor-only; `NO_SHOW` is front-desk-only |
 | `GET` | `/doctors` | both | Bookable doctors |
 | `GET` | `/patients?q=` | both | Search by name or phone digits |
-| `POST` | `/patients` | both | Register; `409` with the existing record on a phone match unless `allowDuplicate` |
+| `POST` | `/patients` | both | Register; `409` naming the existing record on a phone match |
 | `GET` | `/patients/:id` | both | Demographics, allergies, conditions |
 | `PATCH` | `/patients/:id` | both | Edit demographics, allergies, conditions |
 | `GET` | `/patients/:id/consultations` | doctor | Clinical timeline |
@@ -361,7 +361,7 @@ Production runs on Vercel as two projects from the same repository, connected to
 | Project | Root Directory | Notes |
 |---|---|---|
 | `frontend` | `frontend` | Next.js. Needs `API_URL` pointing at the backend's production URL. |
-| `backend` | `backend` | Bun runtime (`vercel.json` pins `bunVersion`). Needs `DATABASE_URL` (pooled), `DIRECT_URL` (direct, for migrations), `GEMINI_API_KEY`, `AI_PROVIDER`, `AI_MODEL`, `CORS_ORIGIN`. |
+| `backend` | `backend` | Bun runtime (`vercel.json` pins `bunVersion`). Needs `DATABASE_URL` (pooled), `DIRECT_URL` (direct, for migrations), `OPENROUTER_API_KEY`, `AI_PROVIDER`, `AI_MODEL`, `CORS_ORIGIN`. |
 
 The backend's build command runs `prisma migrate deploy` over `DIRECT_URL` and then `prisma/ensure-staff.ts`, so every deploy applies pending migrations and guarantees the two demo accounts exist. It never touches patients, appointments or consultations. If a migration fails, the build fails and the previous deployment stays live.
 
