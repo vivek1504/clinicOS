@@ -16,6 +16,13 @@ export const PatientSummaryResponse = t.Object({
   basedOn: t.Integer(),
 });
 
+export const VoiceStatusResponse = t.Object({ enabled: t.Boolean() });
+
+export const TranscriptionTokenResponse = t.Object({
+  token: t.String(),
+  expiresInSeconds: t.Integer(),
+});
+
 export const StructureConsultationResponse = t.Object({
   draft: StructuredNote,
   model: t.String(),

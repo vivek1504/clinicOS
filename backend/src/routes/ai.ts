@@ -1,18 +1,27 @@
 import { Elysia } from "elysia";
 import type { AiProvider } from "../ai/provider";
 import { AiService } from "../services/ai.service";
+import { VoiceService } from "../services/voice.service";
 import {
   PatientSummaryBody,
   PatientSummaryResponse,
   StructureConsultationBody,
   StructureConsultationResponse,
+  TranscriptionTokenResponse,
+  VoiceStatusResponse,
 } from "../schemas/ai";
 import { ErrorEnvelope } from "../schemas/common";
 
-export const aiRoutes = (ai: AiProvider) => {
+export const aiRoutes = (ai: AiProvider, voice: VoiceService = new VoiceService()) => {
   const service = new AiService(ai);
 
   return new Elysia({ prefix: "/ai" })
+    // Whether the consultation should offer a Record button at all.
+    .get("/voice", () => ({ enabled: voice.enabled }), { response: { 200: VoiceStatusResponse } })
+    // Short-lived AssemblyAI token; the browser streams audio to them directly.
+    .post("/transcription-token", () => voice.transcriptionToken(), {
+      response: { 200: TranscriptionTokenResponse, 429: ErrorEnvelope, 503: ErrorEnvelope },
+    })
     .post(
       "/patient-summary",
       async ({ body, request }) => service.summarizePatientHistory({ patientId: body.patientId, signal: request.signal }),

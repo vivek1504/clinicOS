@@ -44,3 +44,18 @@ export async function summarizePatientHistory(patientId: string, signal: AbortSi
     throw err;
   }
 }
+
+/** Whether the server has voice transcription configured; the consultation hides Record when it does not. */
+export async function getVoiceStatus(): Promise<{ enabled: boolean }> {
+  return apiFetch<{ enabled: boolean }>("/ai/voice");
+}
+
+/** Short-lived AssemblyAI token; the browser streams audio to them directly, the key never leaves the server. */
+export async function getTranscriptionToken(): Promise<{ token: string; expiresInSeconds: number }> {
+  try {
+    return await apiFetch("/ai/transcription-token", { method: "POST" });
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "NETWORK") throw new ApiError("AI_UNAVAILABLE", err.message, 0);
+    throw err;
+  }
+}

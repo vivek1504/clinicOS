@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ConsultationWorkspace } from "@/components/consultation/consultation-workspace";
+import { getVoiceStatus } from "@/lib/api/ai";
 import { getAppointments } from "@/lib/api/appointments";
 import { isApiError } from "@/lib/api/client";
 import { getPatient, getPatientConsultations } from "@/lib/api/patients";
@@ -21,9 +22,15 @@ export default async function ConsultationPage({
   const { appointmentId } = await searchParams;
   await requireRole("DOCTOR", "/front-desk");
 
-  let patient, history, appointments;
+  let patient, history, appointments, voice;
   try {
-    [patient, history, appointments] = await Promise.all([getPatient(id), getPatientConsultations(id), getAppointments()]);
+    [patient, history, appointments, voice] = await Promise.all([
+      getPatient(id),
+      getPatientConsultations(id),
+      getAppointments(),
+      // Dictation is optional; a server without it just shows no Record button.
+      getVoiceStatus().catch(() => ({ enabled: false })),
+    ]);
   } catch (err) {
     if (isApiError(err, "NOT_FOUND")) notFound();
     throw err;
@@ -34,5 +41,5 @@ export default async function ConsultationPage({
     redirect(`/patients/${id}`);
   }
 
-  return <ConsultationWorkspace patient={patient} history={history} appointmentId={appointmentId} />;
+  return <ConsultationWorkspace patient={patient} history={history} appointmentId={appointmentId} voiceEnabled={voice.enabled} />;
 }

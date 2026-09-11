@@ -23,6 +23,7 @@ import { SaveBar } from "./save-bar";
 import { SavedState } from "./saved-state";
 import { StructuredDraft } from "./structured-draft";
 import { useDraftPersistence } from "./use-draft-persistence";
+import { useTranscription } from "./use-transcription";
 import { useUnsavedGuard } from "./use-unsaved-guard";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -39,10 +40,13 @@ export function ConsultationWorkspace({
   patient,
   history,
   appointmentId,
+  voiceEnabled = false,
 }: {
   patient: PatientDto;
   history: ConsultationDto[];
   appointmentId?: string;
+  /** The server has AssemblyAI configured, so the notes panel offers Record. */
+  voiceEnabled?: boolean;
 }) {
   const [state, dispatch] = useReducer(editorReducer, undefined, () => initialEditorState());
   const [manual, setManual] = useState(false);
@@ -63,6 +67,7 @@ export function ConsultationWorkspace({
   const savedRef = useRef(false);
 
   const router = useGuardedRouter();
+  const voice = useTranscription({ onFinal: (text) => dispatch({ type: "APPEND_RAW_NOTES", text }) });
   const { pending, clear: clearPersisted, dismissPending } = useDraftPersistence(patient.id, appointmentId, state);
   useUnsavedGuard(state.dirty && !saving && !saved);
 
@@ -164,6 +169,7 @@ export function ConsultationWorkspace({
 
   const doSave = useCallback(async () => {
     if (saving || !canSave) return;
+    voice.stop();
     setSaving(true);
     setSaveError(null);
     try {
@@ -191,7 +197,7 @@ export function ConsultationWorkspace({
     } finally {
       setSaving(false);
     }
-  }, [appointmentId, canSave, clearPersisted, finalNote, patient.id, saving, state, wasAiUsed]);
+  }, [appointmentId, canSave, clearPersisted, finalNote, patient.id, saving, state, voice, wasAiUsed]);
 
   /** A note with no structured content is legal, but the record will look empty; say so once. */
   const save = useCallback(() => {
@@ -314,6 +320,11 @@ export function ConsultationWorkspace({
           textareaRef={notesRef}
           highlights={highlights}
           activeSpan={activeSpan}
+          voice={
+            voiceEnabled
+              ? { status: voice.status, partial: voice.partial, error: voice.error, startedAt: voice.startedAt, analyser: voice.analyser, device: voice.device, silent: voice.silent, onToggle: () => (voice.status === "idle" ? voice.start() : voice.stop()) }
+              : undefined
+          }
         />
 
         <AiPanel

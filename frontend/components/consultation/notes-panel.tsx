@@ -1,10 +1,41 @@
 "use client";
 
-import { useRef } from "react";
-import { SparklesIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { MicIcon, SparklesIcon, SquareIcon } from "lucide-react";
 import type { Span } from "@/lib/evidence";
 import { Button } from "@/components/ui/button";
 import { MAX_NOTES, notesValidationMessage } from "./notes-validation";
+import { LevelMeter } from "./level-meter";
+import type { TranscriptionStatus } from "./use-transcription";
+
+export interface VoiceControls {
+  status: TranscriptionStatus;
+  /** The sentence still being recognised; it is not in `value` yet. */
+  partial: string;
+  error: string | null;
+  startedAt: number | null;
+  /** Mic tap for the level bars while recording. */
+  analyser: AnalyserNode | null;
+  /** Label of the input device in use. */
+  device: string | null;
+  /** Nothing but silence has come in for a few seconds. */
+  silent: boolean;
+  onToggle: () => void;
+}
+
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const s = Math.max(0, Math.floor((now - since) / 1000));
+  return (
+    <span className="num font-mono text-[12px] tabular-nums">
+      {String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")}
+    </span>
+  );
+}
 
 const PLACEHOLDER =
   "Describe the patient's symptoms, relevant history, medications mentioned, examination findings, and plan…";
@@ -19,6 +50,7 @@ export function NotesPanel({
   textareaRef,
   highlights = [],
   activeSpan = null,
+  voice,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -31,7 +63,10 @@ export function NotesPanel({
   highlights?: Span[];
   /** The phrase behind the draft row the doctor is on. */
   activeSpan?: Span | null;
+  /** Dictation controls; absent when the server has no transcription configured. */
+  voice?: VoiceControls;
 }) {
+  const recording = voice?.status === "recording";
   const mirrorRef = useRef<HTMLDivElement>(null);
   const spans = [...highlights, ...(activeSpan ? [activeSpan] : [])].sort((a, b) => a.start - b.start);
   const showMirror = spans.length > 0;
@@ -58,7 +93,9 @@ export function NotesPanel({
   return (
     <section
       aria-labelledby="notes-h"
-      className="panel flex min-h-[60dvh] flex-col md:min-h-[420px] transition-[box-shadow] duration-200 focus-within:shadow-2 focus-within:ring-1 focus-within:ring-accent-500/30 xl:h-full xl:min-h-0"
+      className={`panel flex min-h-[60dvh] flex-col md:min-h-[420px] transition-[box-shadow] duration-200 xl:h-full xl:min-h-0 ${
+        recording ? "shadow-2 ring-1 ring-danger-700/35" : "focus-within:shadow-2 focus-within:ring-1 focus-within:ring-accent-500/30"
+      }`}
     >
       <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
         <div>
@@ -66,11 +103,44 @@ export function NotesPanel({
             Doctor notes
           </h2>
         </div>
-        {value.length > MAX_NOTES * 0.8 ? (
-          <span className={`num mt-1 whitespace-nowrap text-[11px] ${over ? "font-medium text-danger-700" : "text-ink-3"}`} aria-live="polite">
-            {value.length.toLocaleString()} / {MAX_NOTES.toLocaleString()}
-          </span>
-        ) : null}
+        <div className="flex items-center gap-3">
+          {value.length > MAX_NOTES * 0.8 ? (
+            <span className={`num whitespace-nowrap text-[11px] ${over ? "font-medium text-danger-700" : "text-ink-3"}`} aria-live="polite">
+              {value.length.toLocaleString()} / {MAX_NOTES.toLocaleString()}
+            </span>
+          ) : null}
+          {voice ? (
+            // One toggle: Record becomes Stop, with the live dot and elapsed time, while the mic is open.
+            <Button
+              variant={recording ? "danger" : "secondary"}
+              size="sm"
+              onClick={voice.onToggle}
+              loading={voice.status === "connecting"}
+              aria-pressed={recording}
+              aria-describedby="voice-hint"
+            >
+              {recording ? (
+                <>
+                  {voice.analyser ? (
+                    <LevelMeter analyser={voice.analyser} />
+                  ) : (
+                    <span className="relative flex size-2" aria-hidden="true">
+                      <span className="relative size-2 rounded-full bg-danger-700" />
+                    </span>
+                  )}
+                  Stop
+                  {voice.startedAt ? <Elapsed since={voice.startedAt} /> : null}
+                  <SquareIcon className="size-3 fill-current" />
+                </>
+              ) : (
+                <>
+                  {voice.status === "connecting" ? null : <MicIcon />}
+                  {voice.status === "connecting" ? "Connecting…" : "Record"}
+                </>
+              )}
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <label htmlFor="raw-notes" className="sr-only">
@@ -105,6 +175,24 @@ export function NotesPanel({
         className="relative h-full w-full resize-none bg-transparent px-6 py-3 text-[16px] leading-[1.8] text-ink outline-none placeholder:text-ink-4"
       />
       </div>
+      {/* The sentence still being recognised sits under the notes, never inside them, so typing and dictation cannot collide. */}
+      {recording ? (
+        <p id="voice-hint" className={`min-h-[2.5rem] border-t border-dashed border-line px-6 py-2 text-[14px] leading-[1.6] ${voice?.silent && !voice.partial ? "text-danger-700" : "text-ink-3 italic"}`} aria-live="polite">
+          {voice?.partial
+            ? voice.partial
+            : voice?.silent
+              ? `No sound is reaching the microphone${voice.device ? ` (${voice.device})` : ""}. Check that it is not muted, or pick another input in the browser's site settings.`
+              : `Listening${voice?.device ? ` on ${voice.device}` : ""}…`}
+        </p>
+      ) : voice?.error ? (
+        <p id="voice-hint" role="alert" className="border-t border-line px-6 py-2 text-[12px] text-danger-700">
+          {voice.error}
+        </p>
+      ) : voice ? (
+        <span id="voice-hint" className="sr-only">
+          Dictate into the notes. Finished sentences are added as you speak.
+        </span>
+      ) : null}
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-6 py-4">
         <p id="raw-notes-hint" className="text-[12px] text-ink-3" aria-live="polite">

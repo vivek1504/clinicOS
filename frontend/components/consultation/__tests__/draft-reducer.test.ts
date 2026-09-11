@@ -131,3 +131,15 @@ describe("editorReducer", () => {
     expect(editorReducer(withDraft(), { type: "MARK_SAVED" }).dirty).toBe(false);
   });
 });
+
+describe("APPEND_RAW_NOTES", () => {
+  test("joins dictated segments as sentences without touching typed text", () => {
+    let s = initialEditorState("req-2");
+    s = editorReducer(s, { type: "APPEND_RAW_NOTES", text: "Dry cough for two weeks." });
+    expect(s.rawNotes).toBe("Dry cough for two weeks.");
+    s = editorReducer(s, { type: "SET_RAW_NOTES", value: s.rawNotes + " No fever  " });
+    s = editorReducer(s, { type: "APPEND_RAW_NOTES", text: "Chest clear on exam" });
+    expect(s.rawNotes).toBe("Dry cough for two weeks. No fever. Chest clear on exam");
+    expect(s.dirty).toBe(true);
+  });
+});
