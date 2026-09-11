@@ -1,3 +1,4 @@
 {
-  "bunVersion": "1.4.x"
+  "bunVersion": "1.4.x",
+  "buildCommand": "DATABASE_URL=\"$DIRECT_URL\" bunx prisma migrate deploy && DATABASE_URL=\"$DIRECT_URL\" bun prisma/ensure-staff.ts"
 }

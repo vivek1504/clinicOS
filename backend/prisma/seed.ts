@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { upsertStaff } from "./staff";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -29,26 +30,9 @@ async function seed() {
     // 0. Start clean. Clinical data goes; the doctor and any live sign-in sessions stay.
     await tx.$executeRawUnsafe(`TRUNCATE TABLE "Consultation", "Appointment", "Patient" CASCADE`);
 
-    // 1. Doctor
-    // Demo sign-in: mehta@clinicos.local / clinicos
+    // 1. Staff (doctor + receptionist), shared with the deploy-time script
     const passwordHash = await Bun.password.hash("clinicos");
-    await tx.user.upsert({
-      where: { id: "doc_default" },
-      update: { name: "Dr. Mehta", email: "mehta@clinicos.local", passwordHash, role: "DOCTOR" },
-      create: {
-        id: "doc_default",
-        name: "Dr. Mehta",
-        email: "mehta@clinicos.local",
-        passwordHash,
-        role: "DOCTOR",
-      },
-    });
-    // Front desk sign-in: reception@clinicos.local / clinicos
-    await tx.user.upsert({
-      where: { id: "rec_default" },
-      update: { name: "Priya Nair", email: "reception@clinicos.local", passwordHash, role: "RECEPTIONIST" },
-      create: { id: "rec_default", name: "Priya Nair", email: "reception@clinicos.local", passwordHash, role: "RECEPTIONIST" },
-    });
+    await upsertStaff(tx, passwordHash);
 
     // 2. Patients
     const patients = [
