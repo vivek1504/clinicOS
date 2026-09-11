@@ -6,7 +6,7 @@ export const STATUS_LABEL: Record<AppointmentStatus, string> = {
   WAITING: "Waiting",
   IN_CONSULTATION: "In consultation",
   COMPLETED: "Completed",
-  NO_SHOW: "No show",
+  NO_SHOW: "Absent",
   CANCELLED: "Cancelled",
 };
 

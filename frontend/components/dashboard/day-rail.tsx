@@ -16,63 +16,74 @@ export async function DayRail({ appointments, isToday }: { appointments: Appoint
   const upcoming = sorted.filter((a) => (a.status === "WAITING" || a.status === "BOOKED") && a.id !== next?.id);
   const notArrived = sorted.filter((a) => a.status === "BOOKED").length;
 
+  const inRoom = next?.status === "IN_CONSULTATION";
+
   return (
     <div className="flex flex-col gap-5">
-      <Card title={next?.status === "IN_CONSULTATION" ? "In the room" : "Up next"}>
-        {next ? (
-          <>
-            <p className="text-[20px] font-semibold tracking-[-0.015em] text-ink">{next.patient.name}</p>
-            <p className="mt-0.5 text-[13px] text-ink-3">
-              <span className="num font-mono">{formatTime(next.scheduledAt)}</span> · {next.reason}
-            </p>
-            {patient ? (
-              <dl className="mt-4 space-y-3 border-t border-line pt-4 text-[13px]">
-                <div>
-                  <dt className="eyebrow">{patient.allergies.length === 1 ? "Allergy" : "Allergies"}</dt>
-                  <dd className={`mt-1 font-medium ${patient.allergies.length ? "text-danger-700" : "text-ink-3"}`}>
-                    {patient.allergies.length ? patient.allergies.join(", ") : "No known allergies"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="eyebrow">Existing conditions</dt>
-                  <dd className={`mt-1 font-medium ${patient.conditions.length ? "text-ink" : "text-ink-3"}`}>
-                    {patient.conditions.length ? patient.conditions.join(", ") : "None recorded"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="eyebrow">Age</dt>
-                  <dd className="mt-1 font-medium text-ink">{patient.age} years</dd>
-                </div>
-              </dl>
-            ) : null}
-            <div className="mt-5 flex gap-2">
-              <Button variant="secondary" className="flex-1" render={<SafeLink href={`/patients/${next.patientId}/consultation?appointmentId=${encodeURIComponent(next.id)}`} />}>
-                {next.status === "IN_CONSULTATION" ? "Continue consultation" : "Start consultation"}
-                <ArrowRightIcon />
-              </Button>
-              <Button variant="secondary" render={<SafeLink href={`/patients/${next.patientId}?appointmentId=${encodeURIComponent(next.id)}`} />}>
-                Record
-              </Button>
+      {/* Same heading block as the schedule's, so both panels share a top edge. */}
+      <div>
+        <div className="pb-4">
+          <h2 className="text-[20px] font-semibold tracking-[-0.015em] text-ink">{inRoom ? "In the room" : "Up next"}</h2>
+          <p className="mt-0.5 text-[13px] text-ink-3">
+            {next ? (inRoom ? "Consultation in progress" : "Checked in and ready") : notArrived ? "Waiting for check-ins" : sorted.length ? "Every patient seen" : "No appointments"}
+          </p>
+        </div>
+        <Card>
+          {next ? (
+            <>
+              <p className="text-[20px] font-semibold tracking-[-0.015em] text-ink">{next.patient.name}</p>
+              <p className="mt-0.5 text-[13px] text-ink-3">
+                <span className="num font-mono">{formatTime(next.scheduledAt)}</span> · {next.reason}
+              </p>
+              {patient ? (
+                <dl className="mt-4 space-y-3 border-t border-line pt-4 text-[13px]">
+                  <div>
+                    <dt className="eyebrow">{patient.allergies.length === 1 ? "Allergy" : "Allergies"}</dt>
+                    <dd className={`mt-1 font-medium ${patient.allergies.length ? "text-danger-700" : "text-ink-3"}`}>
+                      {patient.allergies.length ? patient.allergies.join(", ") : "No known allergies"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="eyebrow">Existing conditions</dt>
+                    <dd className={`mt-1 font-medium ${patient.conditions.length ? "text-ink" : "text-ink-3"}`}>
+                      {patient.conditions.length ? patient.conditions.join(", ") : "None recorded"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="eyebrow">Age</dt>
+                    <dd className="mt-1 font-medium text-ink">{patient.age} years</dd>
+                  </div>
+                </dl>
+              ) : null}
+              <div className="mt-5 flex gap-2">
+                <Button variant="secondary" className="flex-1" render={<SafeLink href={`/patients/${next.patientId}/consultation?appointmentId=${encodeURIComponent(next.id)}`} />}>
+                  {next.status === "IN_CONSULTATION" ? "Continue consultation" : "Start consultation"}
+                  <ArrowRightIcon />
+                </Button>
+                <Button variant="secondary" render={<SafeLink href={`/patients/${next.patientId}?appointmentId=${encodeURIComponent(next.id)}`} />}>
+                  Record
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="py-2 text-center">
+              <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-accent-50 text-accent-700" aria-hidden="true">
+                <CheckIcon className="size-4" strokeWidth={2.5} />
+              </span>
+              <p className="mt-3 text-[15px] font-medium text-ink">{notArrived ? "Nobody waiting yet" : sorted.length ? "All caught up" : "Nothing scheduled"}</p>
+              <p className="mt-1 text-[13px] text-ink-3">
+                {notArrived
+                  ? `${notArrived} booked, not yet checked in.`
+                  : sorted.length
+                    ? "Every patient on this list has been seen."
+                    : isToday
+                      ? "New bookings appear here automatically."
+                      : "Pick another day to see its schedule."}
+              </p>
             </div>
-          </>
-        ) : (
-          <div className="py-2 text-center">
-            <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-accent-50 text-accent-700" aria-hidden="true">
-              <CheckIcon className="size-4" strokeWidth={2.5} />
-            </span>
-            <p className="mt-3 text-[15px] font-medium text-ink">{notArrived ? "Nobody waiting yet" : sorted.length ? "All caught up" : "Nothing scheduled"}</p>
-            <p className="mt-1 text-[13px] text-ink-3">
-              {notArrived
-                ? `${notArrived} booked, not yet checked in.`
-                : sorted.length
-                  ? "Every patient on this list has been seen."
-                  : isToday
-                    ? "New bookings appear here automatically."
-                    : "Pick another day to see its schedule."}
-            </p>
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      </div>
 
       {sorted.length > 0 ? (
         <Card title="Day progress" aside={<span className="num">{done} of {sorted.length} seen</span>}>
@@ -107,9 +118,12 @@ export async function DayRail({ appointments, isToday }: { appointments: Appoint
 export function DayRailSkeleton() {
   return (
     <div className="flex flex-col gap-5" aria-busy="true">
+      <div className="pb-4">
+        <Skeleton className="h-7 w-24" />
+        <Skeleton className="mt-1.5 h-4 w-40" />
+      </div>
       <div className="panel p-5">
-        <Skeleton className="h-5 w-20" />
-        <Skeleton className="mt-4 h-6 w-40" />
+        <Skeleton className="h-6 w-40" />
         <Skeleton className="mt-2 h-4 w-56" />
         <div className="mt-5 space-y-3 border-t border-line pt-4">
           <Skeleton className="h-4 w-32" />

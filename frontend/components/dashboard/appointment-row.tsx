@@ -100,7 +100,7 @@ export function AppointmentRow({
         {/* Phones: one short labeled action; the row itself opens the patient. */}
         {cancelled ? null : blockedBy || noShow || booked ? (
           <Button variant="ghost" size="sm" className="sm:hidden" disabled title={blockedBy ? `${blockedBy} first` : undefined}>
-            {noShow ? "No show" : booked ? "Booked" : "Waiting"}
+            {noShow ? "Absent" : booked ? "Booked" : "Waiting"}
           </Button>
         ) : (
           <Button variant={current ? "primary" : "ghost"} size="sm" className="sm:hidden" render={<SafeLink href={done ? profileHref : consultHref} />}>
