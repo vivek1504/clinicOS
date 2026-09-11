@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDownIcon } from "lucide-react";
+import { ArrowRightIcon, ChevronDownIcon } from "lucide-react";
+import { SafeLink } from "@/components/shared/safe-link";
+import { Button } from "@/components/ui/button";
 import type { ConsultationDto, PatientDto } from "@/lib/api/types";
 import { formatDate, formatGender } from "@/lib/format";
 
@@ -28,7 +30,7 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
           aria-controls="ctx-body"
           aria-label={open ? "Hide patient context" : "Show patient context"}
           onClick={() => setOpen((v) => !v)}
-          className="-mr-2 flex size-8 items-center justify-center rounded-md text-ink-4 hover:bg-surface-2 hover:text-ink md:hidden"
+          className="-mr-2 flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink md:hidden"
         >
           <ChevronDownIcon className={`size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
@@ -58,6 +60,14 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
           )}
         </Item>
       </dl>
+
+      {/* Guarded link: leaving with unsaved notes still asks first. */}
+      <div className="border-t border-line px-5 py-3">
+        <Button variant="secondary" size="sm" className="w-full" render={<SafeLink href={`/patients/${patient.id}`} />}>
+          Full patient record
+          <ArrowRightIcon />
+        </Button>
+      </div>
     </aside>
   );
 }
@@ -66,7 +76,7 @@ function Item({ label, tone, children }: { label: string; tone?: "danger" | "qui
   return (
     <div className="min-w-0 bg-surface px-5 py-3.5">
       <dt className="eyebrow">{label}</dt>
-      <dd className={`mt-1 text-[14px] leading-snug ${tone === "danger" ? "font-medium text-danger-700" : tone === "quiet" ? "text-ink-4" : "font-medium text-ink"}`}>
+      <dd className={`mt-1 text-[14px] leading-snug ${tone === "danger" ? "font-medium text-danger-700" : tone === "quiet" ? "text-ink-3" : "font-medium text-ink"}`}>
         {children}
       </dd>
     </div>

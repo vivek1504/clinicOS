@@ -23,6 +23,25 @@ function withDraft(): EditorState {
 }
 
 describe("editorReducer", () => {
+  test("regenerating keeps the replaced draft and RESTORE_PREVIOUS brings it back once", () => {
+    const first = withDraft();
+    expect(first.previous).toBeNull();
+    const id = first.draft.symptoms[0].id;
+    const edited = editorReducer(first, { type: "ITEM_EDIT", field: "symptoms", id, value: "dry cough at night" });
+    const again = editorReducer(edited, {
+      type: "AI_SUCCESS",
+      response: { ...response, draft: { ...response.draft, chiefComplaint: "Wheeze" } },
+    });
+    expect(again.draft.chiefComplaint.value).toBe("Wheeze");
+    expect(again.previous?.draft.symptoms[0].value).toBe("dry cough at night");
+    const restored = editorReducer(again, { type: "RESTORE_PREVIOUS" });
+    expect(restored.draft.symptoms[0].value).toBe("dry cough at night");
+    expect(restored.draft.chiefComplaint.value).toBe("Cough");
+    expect(restored.previous).toBeNull();
+    expect(restored.ai).toEqual({ status: "done" });
+    expect(editorReducer(restored, { type: "RESTORE_PREVIOUS" })).toBe(restored);
+  });
+
   test("starts clean and becomes dirty when notes are typed", () => {
     const s0 = initialEditorState("req-1");
     expect(s0.dirty).toBe(false);

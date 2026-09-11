@@ -2,29 +2,30 @@
 
 import { CheckIcon } from "lucide-react";
 import { Reveal } from "@/components/shared/reveal";
-import { AiMark } from "@/components/shared/source-mark";
-import { DRAFT_LIST_FIELDS, countUnreviewedAi, type AiMeta, type DraftListField, type NoteDraft } from "./draft-model";
+import { AiDot } from "@/components/shared/source-mark";
+import { DRAFT_LIST_FIELDS, countUnreviewedAi, type DraftListField, type NoteDraft } from "./draft-model";
 import { ListField } from "./list-field";
 
 export function StructuredDraft({
   draft,
   aiGenerated,
   missingInformation,
-  aiMeta,
   onChiefComplaint,
   onItemAdd,
   onItemEdit,
   onItemRemove,
+  onRestorePrevious,
   firstFieldRef,
 }: {
   draft: NoteDraft;
   aiGenerated: boolean;
   missingInformation: string[];
-  aiMeta: AiMeta | null;
   onChiefComplaint: (value: string) => void;
   onItemAdd: (field: DraftListField, value: string) => void;
   onItemEdit: (field: DraftListField, id: string, value: string) => void;
   onItemRemove: (field: DraftListField, id: string) => void;
+  /** Present after a regenerate: swaps the draft that was replaced back in. */
+  onRestorePrevious?: () => void;
   firstFieldRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const unreviewed = countUnreviewedAi(draft);
@@ -32,22 +33,9 @@ export function StructuredDraft({
 
   return (
     <div className="flex flex-1 flex-col">
-      <Reveal className="sticky top-0 z-10 flex flex-wrap items-start justify-between gap-3 border-b border-line bg-surface/90 px-6 py-4 backdrop-blur-md">
-        {aiGenerated ? (
-          <div>
-            <p className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.08em] text-ai-700 uppercase">
-              <AiMark />
-              AI-generated draft
-            </p>
-            <p className="mt-1 text-[13px] text-ink-3">Review and edit before saving.</p>
-          </div>
-        ) : (
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.08em] text-ink-2 uppercase">Doctor note</p>
-            <p className="mt-1 text-[13px] text-ink-3">Entered directly. Nothing here was generated.</p>
-          </div>
-        )}
-        {aiGenerated ? (
+      {aiGenerated || onRestorePrevious ? (
+        <Reveal className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface/90 px-6 py-2.5 backdrop-blur-md">
+          {aiGenerated ? (
           <span
             aria-live="polite"
             className={`num inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium transition-colors duration-300 ${
@@ -55,16 +43,22 @@ export function StructuredDraft({
             }`}
           >
             {unreviewed > 0 ? (
-              `${unreviewed} AI ${unreviewed === 1 ? "item" : "items"} to review`
+              `${unreviewed} ${unreviewed === 1 ? "item" : "items"} to review`
             ) : (
               <>
                 <CheckIcon className="size-3" strokeWidth={2.5} aria-hidden="true" />
-                All AI items reviewed
+                All items reviewed
               </>
             )}
           </span>
-        ) : null}
-      </Reveal>
+          ) : null}
+          {onRestorePrevious ? (
+            <button type="button" onClick={onRestorePrevious} className="ml-auto text-[12px] font-medium text-ink-3 underline-offset-2 transition-colors hover:text-ink hover:underline">
+              Restore previous draft
+            </button>
+          ) : null}
+        </Reveal>
+      ) : null}
 
       <div className="flex flex-col gap-7 px-6 py-6">
         <Reveal index={1}>
@@ -76,7 +70,7 @@ export function StructuredDraft({
               cc.source === "ai" ? "ai-item" : "doctor-item"
             }`}
           >
-            {cc.source === "ai" ? <AiMark /> : cc.source === "doctor" ? <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-accent-500" /> : null}
+            {cc.source === "ai" ? <AiDot /> : cc.source === "doctor" ? <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-accent-500" /> : null}
             <input
               ref={firstFieldRef}
               id="chief-complaint"
@@ -85,7 +79,7 @@ export function StructuredDraft({
               placeholder="Primary concern, in a few words"
               className="h-10 min-w-0 flex-1 bg-transparent text-[16px] font-medium text-ink outline-none placeholder:font-normal placeholder:text-ink-4"
             />
-            {cc.edited ? <span className="hidden shrink-0 pr-3 text-[11px] font-medium text-accent-700 sm:inline">Edited by doctor</span> : null}
+            {cc.edited ? <span className="hidden shrink-0 pr-3 text-[11px] font-medium text-accent-700 sm:inline">Doctor edited</span> : null}
           </div>
         </Reveal>
 
@@ -106,8 +100,7 @@ export function StructuredDraft({
         {aiGenerated && missingInformation.length > 0 ? (
           <Reveal index={6}>
             <section aria-labelledby="missing-h" className="rounded-md border border-dashed border-ai-200 bg-ai-50/50 px-4 py-3.5">
-            <h3 id="missing-h" className="eyebrow inline-flex items-center gap-2 text-ai-700">
-              <AiMark />
+            <h3 id="missing-h" className="eyebrow text-ai-700">
               Missing information
             </h3>
             <ul className="mt-2.5 space-y-1.5">
@@ -118,17 +111,12 @@ export function StructuredDraft({
                 </li>
               ))}
             </ul>
-            <p className="mt-2.5 text-[11px] text-ink-4">Not found in your notes. Add it above if known; nothing here is written into the note.</p>
+            <p className="mt-2.5 text-[12px] text-ink-3">Not in your notes. Add above if known.</p>
             </section>
           </Reveal>
         ) : null}
       </div>
 
-      {aiMeta ? (
-        <p className="num mt-auto border-t border-line px-6 py-3 text-[11px] text-ink-4">
-          Structured by {aiMeta.model} in {(aiMeta.latencyMs / 1000).toFixed(1)}s
-        </p>
-      ) : null}
     </div>
   );
 }

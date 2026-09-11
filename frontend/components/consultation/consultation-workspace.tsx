@@ -26,6 +26,14 @@ import { useUnsavedGuard } from "./use-unsaved-guard";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
+/** Details the backend attaches to ALREADY_IN_CONSULTATION and QUEUE_ORDER, plus its one-line reason. */
+interface Blocker {
+  appointmentId?: string;
+  patientId?: string;
+  patientName?: string;
+  message: string;
+}
+
 export function ConsultationWorkspace({
   patient,
   history,
@@ -40,21 +48,50 @@ export function ConsultationWorkspace({
   const [saved, setSaved] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmNotesOnly, setConfirmNotesOnly] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<ApiError | null>(null);
+  const [blockedBy, setBlockedBy] = useState<Blocker | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const heldRoom = useRef(false);
+  const savedRef = useRef(false);
 
   const router = useGuardedRouter();
   const { pending, clear: clearPersisted, dismissPending } = useDraftPersistence(patient.id, appointmentId, state);
   useUnsavedGuard(state.dirty && !saving && !saved);
 
-  // Arriving from the schedule: mark the appointment as in consultation. Failure here is not the doctor's problem.
+  // sessionStorage is per tab, so a recent snapshot is this doctor's own work from a moment ago: bring it back without asking.
+  useEffect(() => {
+    if (pending && Date.now() - pending.savedAt < 6 * 60 * 60 * 1000) {
+      dispatch({ type: "RESTORE", snapshot: pending });
+      dismissPending();
+    }
+  }, [pending, dismissPending]);
+
+  // Arriving from the schedule: take the room. Only one patient can be in consultation at a time, and the
+  // backend enforces that; here we just show who holds it. Leaving without saving gives the room back.
   useEffect(() => {
     if (!appointmentId) return;
-    patchAppointmentStatus(appointmentId, "IN_CONSULTATION").catch(() => {});
+    let cancelled = false;
+    patchAppointmentStatus(appointmentId, "IN_CONSULTATION")
+      .then(() => {
+        if (!cancelled) heldRoom.current = true;
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && (err.code === "ALREADY_IN_CONSULTATION" || err.code === "QUEUE_ORDER")) {
+          setBlockedBy({ ...(err.details as Omit<Blocker, "message"> | undefined), message: err.message });
+        }
+        // Any other failure is not the doctor's problem.
+      });
+    return () => {
+      cancelled = true;
+      if (heldRoom.current && !savedRef.current) patchAppointmentStatus(appointmentId, "WAITING").catch(() => {});
+      heldRoom.current = false;
+    };
   }, [appointmentId]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -98,9 +135,9 @@ export function ConsultationWorkspace({
 
   const finalNote = toFinalNote(state.draft, state.missingInformation);
   const wasAiUsed = state.aiDraft !== null;
-  const canSave = !saving && (state.rawNotes.trim().length > 0 || hasFormContent(state.draft));
+  const canSave = !saving && blockedBy === null && (state.rawNotes.trim().length > 0 || hasFormContent(state.draft));
 
-  const save = useCallback(async () => {
+  const doSave = useCallback(async () => {
     if (saving || !canSave) return;
     setSaving(true);
     setSaveError(null);
@@ -119,15 +156,27 @@ export function ConsultationWorkspace({
       });
       clearPersisted();
       dispatch({ type: "MARK_SAVED" });
+      savedRef.current = true;
       setSaved(true);
-      router.refresh(); // so the patient page and schedule reflect the new consultation on the next navigation
+      // No router.refresh() here: it would re-run this page's server component, which now sees a completed
+      // appointment and redirects away before the saved state is seen. Every page fetches fresh on navigation anyway.
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setSaveError(err instanceof ApiError ? err : new ApiError("UNKNOWN", "Unexpected error", 0));
     } finally {
       setSaving(false);
     }
-  }, [appointmentId, canSave, clearPersisted, finalNote, patient.id, router, saving, state, wasAiUsed]);
+  }, [appointmentId, canSave, clearPersisted, finalNote, patient.id, saving, state, wasAiUsed]);
+
+  /** A note with no structured content is legal, but the record will look empty; say so once. */
+  const save = useCallback(() => {
+    if (saving || !canSave) return;
+    if (!hasFormContent(state.draft)) {
+      setConfirmNotesOnly(true);
+      return;
+    }
+    void doSave();
+  }, [canSave, doSave, saving, state.draft]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -150,7 +199,7 @@ export function ConsultationWorkspace({
       ? "running"
       : state.ai.status === "error"
         ? "error"
-        : state.aiDraft !== null || manual || hasFormContent(state.draft)
+        : state.aiDraft !== null || manual || hasFormContent(state.draft) || state.previous !== null
           ? "draft"
           : "empty";
 
@@ -159,8 +208,8 @@ export function ConsultationWorkspace({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 xl:-mb-16 xl:h-[calc(100dvh-84px)] xl:flex-none">
-      <div className="flex flex-col gap-5">
+    <div className="flex flex-1 flex-col gap-5 xl:-mb-16 xl:h-[calc(100dvh-84px)] xl:flex-none">
+      <div className="flex flex-col gap-3">
         <SafeLink
           href={`/patients/${patient.id}`}
           className="group inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-ink-3 transition-colors hover:text-ink"
@@ -170,14 +219,32 @@ export function ConsultationWorkspace({
         </SafeLink>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="display text-[36px] text-ink sm:text-[40px]">New consultation</h1>
-            <p className="mt-1.5 text-[15px] text-ink-3" suppressHydrationWarning>
+            <h1 className="display text-[30px] text-ink sm:text-[34px]">New consultation</h1>
+            <p className="mt-1 text-[14px] text-ink-3" suppressHydrationWarning>
               {LONG_DATE.format(new Date())}
             </p>
           </div>
-          {appointmentId ? <StatusBadge status="IN_CONSULTATION" className="mb-1.5" /> : <span className="mb-2 text-[13px] text-ink-4">Unscheduled visit</span>}
+          {appointmentId ? <StatusBadge status="IN_CONSULTATION" className="mb-1.5" /> : <span className="mb-2 text-[13px] text-ink-3">Unscheduled visit</span>}
         </div>
       </div>
+
+      {blockedBy ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-wait-100 px-4 py-3 text-[13px] text-ink">
+          <span>
+            <span className="font-medium">{blockedBy.message}.</span>{" "}
+            <span className="text-ink-2">Finish their consultation first. Saving is disabled here until then.</span>
+          </span>
+          {blockedBy.patientId && blockedBy.appointmentId ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              render={<SafeLink href={`/patients/${blockedBy.patientId}/consultation?appointmentId=${encodeURIComponent(blockedBy.appointmentId)}`} />}
+            >
+              Go to their consultation
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {pending ? (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-surface px-4 py-3 text-[13px] text-ink shadow-1">
@@ -235,11 +302,11 @@ export function ConsultationWorkspace({
             draft={state.draft}
             aiGenerated={state.aiDraft !== null}
             missingInformation={state.missingInformation}
-            aiMeta={state.aiMeta}
             onChiefComplaint={(v) => dispatch({ type: "SET_CHIEF_COMPLAINT", value: v })}
             onItemAdd={(field, value) => dispatch({ type: "ITEM_ADD", field, value })}
             onItemEdit={(field, id, value) => dispatch({ type: "ITEM_EDIT", field, id, value })}
             onItemRemove={(field, id) => dispatch({ type: "ITEM_REMOVE", field, id })}
+            onRestorePrevious={state.previous ? () => dispatch({ type: "RESTORE_PREVIOUS" }) : undefined}
             firstFieldRef={firstFieldRef}
           />
         </AiPanel>
@@ -258,15 +325,26 @@ export function ConsultationWorkspace({
 
       <ConfirmDialog
         open={confirmRegenerate}
-        title="Replace the current draft?"
-        body="The structured note, including your edits, will be replaced by a new draft generated from your notes."
-        confirmLabel="Regenerate"
-        destructive
+        title="Structure the notes again?"
+        body="A new draft replaces the current one. The current draft, including your edits, stays one click away until you save."
+        confirmLabel="Structure again"
         onConfirm={() => {
           setConfirmRegenerate(false);
           void runGenerate();
         }}
         onCancel={() => setConfirmRegenerate(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmNotesOnly}
+        title="Save with notes only?"
+        body="The structured note is empty, so this visit will show no chief complaint, symptoms or plan on the record. Your notes are kept in full."
+        confirmLabel="Save notes only"
+        onConfirm={() => {
+          setConfirmNotesOnly(false);
+          void doSave();
+        }}
+        onCancel={() => setConfirmNotesOnly(false)}
       />
 
       <ConfirmDialog

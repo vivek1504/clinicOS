@@ -46,10 +46,10 @@ export function SaveBar({
               </span>
               {wasAiUsed ? (
                 <span className={unreviewedAi > 0 ? "text-ai-700" : "text-accent-700"}>
-                  {unreviewedAi > 0 ? `${pluralize(unreviewedAi, "AI item")} not yet reviewed` : "All AI items reviewed"}
+                  {unreviewedAi > 0 ? `${pluralize(unreviewedAi, "item")} to review` : "All items reviewed"}
                 </span>
               ) : null}
-              <span className="hidden items-center gap-1 text-ink-4 lg:inline-flex">
+              <span className="hidden items-center gap-1 text-ink-3 lg:inline-flex">
                 <kbd className="rounded-[3px] bg-surface px-1.5 py-px font-sans text-[11px] shadow-hair">⌘S</kbd> to save
               </span>
             </>

@@ -37,8 +37,12 @@ export interface EditorState {
   ai: AiStatus;
   /** Raw notes were edited after the current draft was generated. */
   notesChangedSinceDraft: boolean;
+  /** What a regenerate replaced, so it is one click away. Session only; not persisted. */
+  previous: PreviousDraft | null;
   dirty: boolean;
 }
+
+export type PreviousDraft = Pick<EditorState, "draft" | "aiDraft" | "missingInformation" | "aiMeta">;
 
 export type EditorAction =
   | { type: "SET_RAW_NOTES"; value: string }
@@ -52,6 +56,7 @@ export type EditorAction =
   | { type: "ITEM_EDIT"; field: DraftListField; id: string; value: string }
   | { type: "ITEM_REMOVE"; field: DraftListField; id: string }
   | { type: "RESTORE"; snapshot: PersistedDraft }
+  | { type: "RESTORE_PREVIOUS" }
   | { type: "MARK_SAVED" };
 
 export function initialEditorState(clientRequestId: string = newId()): EditorState {
@@ -64,6 +69,7 @@ export function initialEditorState(clientRequestId: string = newId()): EditorSta
     aiMeta: null,
     ai: { status: "idle" },
     notesChangedSinceDraft: false,
+    previous: null,
     dirty: false,
   };
 }
@@ -91,6 +97,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "AI_SUCCESS":
       return withDirty({
         ...state,
+        previous:
+          state.aiDraft !== null || hasFormContent(state.draft)
+            ? { draft: state.draft, aiDraft: state.aiDraft, missingInformation: state.missingInformation, aiMeta: state.aiMeta }
+            : null,
         ai: { status: "done" },
         aiDraft: action.response.draft,
         draft: fromAiDraft(action.response.draft),
@@ -164,6 +174,16 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         aiMeta: action.snapshot.aiMeta,
         ai: action.snapshot.aiDraft ? { status: "done" } : { status: "idle" },
         notesChangedSinceDraft: false,
+      });
+
+    case "RESTORE_PREVIOUS":
+      if (!state.previous) return state;
+      return withDirty({
+        ...state,
+        ...state.previous,
+        previous: null,
+        ai: state.previous.aiDraft ? { status: "done" } : { status: "idle" },
+        notesChangedSinceDraft: state.previous.aiDraft !== null,
       });
 
     case "MARK_SAVED":

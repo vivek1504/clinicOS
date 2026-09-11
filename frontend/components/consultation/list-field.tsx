@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PlusIcon, XIcon } from "lucide-react";
 import { SPRING_QUICK } from "@/components/shared/reveal";
-import { AiMark } from "@/components/shared/source-mark";
+import { AiDot } from "@/components/shared/source-mark";
 import type { Item } from "./draft-model";
 
 export function ListField({
@@ -46,7 +46,7 @@ export function ListField({
             {unreviewed} to review
           </span>
         ) : items.length > 0 ? (
-          <span className="num text-[11px] text-ink-4">{items.length}</span>
+          <span className="num text-[11px] text-ink-3">{items.length}</span>
         ) : null}
       </legend>
 
@@ -65,7 +65,7 @@ export function ListField({
               }`}
             >
               {item.source === "ai" ? (
-                <AiMark />
+                <AiDot />
               ) : (
                 <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-accent-500" />
               )}
@@ -82,13 +82,13 @@ export function ListField({
                 className="h-9 min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none"
               />
               {item.edited ? (
-                <span className="hidden shrink-0 text-[11px] font-medium text-accent-700 sm:inline">Edited by doctor</span>
+                <span className="hidden shrink-0 text-[11px] font-medium text-accent-700 sm:inline">Doctor edited</span>
               ) : null}
               <button
                 type="button"
                 onClick={() => onRemove(item.id)}
                 aria-label={`Remove ${singular}: ${item.value}`}
-                className="flex size-9 shrink-0 items-center justify-center rounded-r-md text-ink-4 opacity-60 transition-[opacity,color,background-color] duration-150 group-hover/item:opacity-100 hover:bg-ink/5 hover:text-ink focus-visible:opacity-100"
+                className="flex size-9 shrink-0 items-center justify-center rounded-r-md text-ink-3 opacity-60 transition-[opacity,color,background-color] duration-150 group-hover/item:opacity-100 hover:bg-ink/5 hover:text-ink focus-visible:opacity-100"
               >
                 <XIcon className="size-3.5" aria-hidden="true" />
               </button>
@@ -97,7 +97,7 @@ export function ListField({
         </AnimatePresence>
 
         <li className="flex items-center gap-2 rounded-md border border-dashed border-line-strong pl-3 transition-colors duration-150 focus-within:border-accent-500 focus-within:bg-surface hover:border-ink-4">
-          <PlusIcon className="size-3.5 shrink-0 text-ink-4" aria-hidden="true" />
+          <PlusIcon className="size-3.5 shrink-0 text-ink-3" aria-hidden="true" />
           <input
             ref={addRef}
             id={`${id}-add`}

@@ -6,7 +6,7 @@ export interface Item {
   id: string;
   value: string;
   source: Source;
-  /** True once the doctor has changed something the model drafted. Drives the "Edited by doctor" tag. */
+  /** True once the doctor has changed something the model drafted. Drives the "Doctor edited" tag. */
   edited?: boolean;
 }
 
