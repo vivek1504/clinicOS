@@ -44,7 +44,7 @@ export function TimelineEntry({ consultation: c, index }: { consultation: Consul
         >
           <div className="min-w-0 flex-1">
             <p className="text-[17px] font-medium tracking-[-0.01em] text-ink">
-              {title ?? <span className="font-normal text-ink-4 italic">No chief complaint recorded</span>}
+              {title ?? <span className="font-normal text-ink-3 italic">No chief complaint recorded</span>}
             </p>
             <p className={`mt-1 text-[13px] leading-relaxed text-ink-3 ${open ? "" : "line-clamp-2"}`}>{notePreview}</p>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-ink-3">
@@ -56,15 +56,12 @@ export function TimelineEntry({ consultation: c, index }: { consultation: Consul
               ) : (
                 <span>Written by doctor</span>
               )}
-              {c.finalNote.doctorPlan.length > 0 ? (
-                <span className="text-ink-4">
-                  {c.finalNote.doctorPlan.length} plan {c.finalNote.doctorPlan.length === 1 ? "item" : "items"}
-                </span>
-              ) : null}
+              {c.finalNote.symptoms.length > 0 ? <span className="num text-ink-3">Symptoms · {c.finalNote.symptoms.length}</span> : null}
+              {c.finalNote.doctorPlan.length > 0 ? <span className="num text-ink-3">Plan · {c.finalNote.doctorPlan.length}</span> : null}
             </div>
           </div>
           <ChevronDownIcon
-            className={`mt-1.5 size-4 shrink-0 text-ink-4 transition-transform duration-200 group-hover:text-ink ${open ? "rotate-180" : ""}`}
+            className={`mt-1.5 size-4 shrink-0 text-ink-3 transition-transform duration-200 group-hover:text-ink ${open ? "rotate-180" : ""}`}
             aria-hidden="true"
           />
         </button>

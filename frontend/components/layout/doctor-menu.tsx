@@ -34,7 +34,8 @@ export function DoctorMenu({ doctor }: { doctor: DoctorDto }) {
         {initial}
       </span>
       <span className="font-medium text-ink">{doctor.name}</span>
-      <Button variant="ghost" size="icon-sm" className="ml-1 text-ink-4 hover:text-ink" aria-label="Sign out" onClick={out} loading={busy}>
+      {doctor.role === "RECEPTIONIST" ? <span className="hidden text-ink-3 sm:inline">· Front desk</span> : null}
+      <Button variant="ghost" size="icon-sm" className="ml-1 text-ink-3 hover:text-ink" aria-label="Sign out" onClick={out} loading={busy}>
         {busy ? null : <LogOutIcon />}
       </Button>
     </div>

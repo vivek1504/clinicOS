@@ -1,26 +1,27 @@
-import { ActivityIcon, AlertTriangleIcon, CalendarIcon, PhoneIcon, PillIcon, ShieldAlertIcon, UserIcon } from "lucide-react";
+import { CalendarIcon, PhoneIcon, ShieldAlertIcon, UserIcon } from "lucide-react";
 import { Card } from "@/components/shared/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AppointmentDto, ConsultationDto, PatientDto } from "@/lib/api/types";
 import { formatDate, formatGender } from "@/lib/format";
 import { CopyId } from "./copy-id";
 
+/** Clinical relevance first: identity, then what can change today's decisions (allergies, conditions), then demographics. */
 export function PatientRecord({
   patient,
   consultations,
   appointment,
 }: {
   patient: PatientDto;
-  consultations: ConsultationDto[];
+  /** null for the front desk: medications are read from consultation notes, which they do not see. */
+  consultations: ConsultationDto[] | null;
   appointment: AppointmentDto | null;
 }) {
-  const medications = medicationsFrom(consultations);
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <IdentityCard patient={patient} appointment={appointment} />
-      <MedicationsCard medications={medications} />
-      <ConditionsCard conditions={patient.conditions} />
       <AllergiesCard allergies={patient.allergies} />
+      <ConditionsCard conditions={patient.conditions} />
+      {consultations ? <MedicationsCard medications={medicationsFrom(consultations)} /> : null}
     </div>
   );
 }
@@ -33,53 +34,54 @@ function IdentityCard({ patient, appointment }: { patient: PatientDto; appointme
     .slice(0, 2)
     .toUpperCase();
   const rows: { icon: React.ReactNode; label: string; value: React.ReactNode }[] = [
-    { icon: <CalendarIcon />, label: "Age", value: `${patient.age} years` },
-    { icon: <UserIcon />, label: "Gender", value: formatGender(patient.gender) },
     { icon: <CalendarIcon />, label: "Date of birth", value: formatDate(patient.dob) },
+    { icon: <UserIcon />, label: "Gender", value: formatGender(patient.gender) },
     { icon: <PhoneIcon />, label: "Phone", value: <span className="num">{patient.phone}</span> },
-    {
-      icon: <ActivityIcon />,
-      label: "Conditions",
-      value: patient.conditions.length ? patient.conditions.join(", ") : <span className="text-ink-4">None recorded</span>,
-    },
   ];
 
   return (
     <Card>
-      <div className="rounded-lg bg-surface-2/70 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <span
-            aria-hidden="true"
-            className="flex size-12 items-center justify-center rounded-full bg-accent-100 text-[15px] font-semibold text-accent-800"
-          >
-            {initials}
-          </span>
+      <div className="flex items-start gap-4">
+        <span
+          aria-hidden="true"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-100 text-[15px] font-semibold text-accent-800"
+        >
+          {initials}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[20px] font-semibold tracking-[-0.015em] text-ink">{patient.name}</h2>
+          <p className="mt-0.5 text-[13px] text-ink-3">
+            {patient.age} · {formatGender(patient.gender)}
+          </p>
           {appointment ? (
-            <span className="rounded-full bg-accent-50 px-2.5 py-0.5 text-[11px] font-medium text-accent-700">Booked today</span>
+            <p className="mt-2 text-[13px] text-ink">
+              <span className="eyebrow mr-2">Today</span>
+              {appointment.reason}
+            </p>
           ) : null}
         </div>
-        <div className="mt-3">
-          <CopyId value={patient.id} />
-        </div>
-        <h2 className="mt-1.5 text-[20px] font-semibold tracking-[-0.015em] text-ink">{patient.name}</h2>
-        <p className="mt-0.5 text-[12px] text-ink-3">
-          {patient.age} years · {formatGender(patient.gender)}
-          {appointment ? ` · ${appointment.reason}` : ""}
-        </p>
       </div>
 
-      <h3 className="mt-5 text-[14px] font-semibold text-ink">Personal information</h3>
-      <dl className="mt-2 divide-y divide-line">
-        {rows.map((r) => (
-          <div key={r.label} className="grid grid-cols-[1.25rem_7rem_1fr] items-baseline gap-2 py-2.5 text-[13px]">
-            <span className="self-center text-ink-4 [&_svg]:size-3.5" aria-hidden="true">
-              {r.icon}
-            </span>
-            <dt className="text-ink-3">{r.label}</dt>
-            <dd className="font-medium text-ink">{r.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <details className="group mt-5">
+        <summary className="cursor-pointer list-none text-[13px] font-medium text-ink-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+          <span className="group-open:hidden">Demographics</span>
+          <span className="hidden group-open:inline">Hide demographics</span>
+        </summary>
+        <dl className="mt-2 divide-y divide-line">
+          {rows.map((r) => (
+            <div key={r.label} className="grid grid-cols-[1.25rem_7rem_minmax(0,1fr)] items-baseline gap-2 py-2.5 text-[13px]">
+              <span className="self-center text-ink-3 [&_svg]:size-3.5" aria-hidden="true">
+                {r.icon}
+              </span>
+              <dt className="text-ink-3">{r.label}</dt>
+              <dd className="font-medium text-ink">{r.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-2">
+          <CopyId value={patient.id} />
+        </div>
+      </details>
     </Card>
   );
 }
@@ -113,32 +115,18 @@ function MedicationsCard({ medications }: { medications: Medication[] }) {
   return (
     <Card title="Medications mentioned" aside={medications.length ? `${medications.length} in notes` : undefined}>
       {medications.length === 0 ? (
-        <Empty>No medications have been mentioned in this patient&apos;s consultation notes.</Empty>
+        <Empty>No medications mentioned in this patient&apos;s notes.</Empty>
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-line">
           {medications.map((m) => (
-            <li key={m.name} className="rounded-lg border border-line p-4">
-              <div className="flex items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-700" aria-hidden="true">
-                  <PillIcon className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-medium text-ink">{m.name}</p>
-                  <p className="mt-0.5 truncate text-[12px] text-ink-3">{m.context ? `Noted during: ${m.context}` : "Noted in consultation"}</p>
-                </div>
+            <li key={m.name} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium text-ink">{m.name}</p>
+                {m.context ? <p className="truncate text-[12px] text-ink-3">Noted during: {m.context}</p> : null}
               </div>
-              <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 text-[12px]">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="size-3.5 text-ink-4" aria-hidden="true" />
-                  <dt className="text-ink-3">First noted</dt>
-                  <dd className="ml-auto num font-medium text-ink">{formatDate(m.since)}</dd>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="size-3.5 text-ink-4" aria-hidden="true" />
-                  <dt className="text-ink-3">Last noted</dt>
-                  <dd className="ml-auto num font-medium text-ink">{formatDate(m.lastNoted)}</dd>
-                </div>
-              </dl>
+              <p className="num text-[12px] text-ink-3">
+                {m.since === m.lastNoted ? formatDate(m.since) : `${formatDate(m.since)} – ${formatDate(m.lastNoted)}`}
+              </p>
             </li>
           ))}
         </ul>
@@ -149,18 +137,14 @@ function MedicationsCard({ medications }: { medications: Medication[] }) {
 
 function ConditionsCard({ conditions }: { conditions: string[] }) {
   return (
-    <Card title="Diagnoses & conditions" aside={conditions.length ? `${conditions.length} on record` : undefined}>
+    <Card title="Conditions" aside={conditions.length ? `${conditions.length} on record` : undefined}>
       {conditions.length === 0 ? (
         <Empty>No chronic conditions or diagnoses on record.</Empty>
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="divide-y divide-line">
           {conditions.map((c) => (
-            <li key={c} className="flex items-center gap-3 rounded-lg border border-line px-4 py-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2" aria-hidden="true">
-                <ActivityIcon className="size-4" />
-              </span>
-              <p className="flex-1 text-[14px] font-medium text-ink">{c}</p>
-              <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-[11px] font-medium text-ink-2">On record</span>
+            <li key={c} className="py-2.5 text-[14px] font-medium text-ink">
+              {c}
             </li>
           ))}
         </ul>
@@ -185,14 +169,10 @@ function AllergiesCard({ allergies }: { allergies: string[] }) {
       {allergies.length === 0 ? (
         <Empty>No known allergies.</Empty>
       ) : (
-        <ul className="space-y-2.5" aria-label="Allergies">
+        <ul className="divide-y divide-danger-200" aria-label="Allergies">
           {allergies.map((a) => (
-            <li key={a} className="flex items-center gap-3 rounded-lg border border-danger-200 bg-danger-100/40 px-4 py-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface text-danger-700" aria-hidden="true">
-                <AlertTriangleIcon className="size-4" />
-              </span>
-              <p className="flex-1 text-[14px] font-medium text-ink">{a}</p>
-              <span className="rounded-full bg-surface px-2.5 py-0.5 text-[11px] font-medium text-danger-700">Allergy</span>
+            <li key={a} className="py-2.5 text-[15px] font-semibold text-danger-700">
+              {a}
             </li>
           ))}
         </ul>
@@ -202,41 +182,35 @@ function AllergiesCard({ allergies }: { allergies: string[] }) {
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-[13px] text-ink-3">{children}</p>;
+  return <p className="py-2 text-[13px] text-ink-3">{children}</p>;
 }
 
 export function PatientRecordSkeleton() {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" aria-busy="true">
       <div className="panel p-5">
-        <div className="rounded-lg bg-surface-2/70 p-4">
+        <div className="flex gap-4">
           <Skeleton className="size-12 rounded-full" />
-          <Skeleton className="mt-4 h-3 w-24" />
-          <Skeleton className="mt-2 h-6 w-44" />
-          <Skeleton className="mt-2 h-3 w-32" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="h-3 w-24" />
+          </div>
         </div>
-        <div className="mt-6 space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex justify-between">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-36" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="panel p-5">
-        <Skeleton className="h-5 w-48" />
-        <Skeleton className="mt-5 h-28 rounded-lg" />
-        <Skeleton className="mt-3 h-28 rounded-lg" />
-      </div>
-      <div className="panel p-5">
-        <Skeleton className="h-5 w-44" />
-        <Skeleton className="mt-5 h-14 rounded-lg" />
-        <Skeleton className="mt-2.5 h-14 rounded-lg" />
+        <Skeleton className="mt-5 h-4 w-28" />
       </div>
       <div className="panel p-5">
         <Skeleton className="h-5 w-24" />
-        <Skeleton className="mt-5 h-14 rounded-lg" />
+        <Skeleton className="mt-5 h-5 w-40" />
+      </div>
+      <div className="panel p-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="mt-5 h-5 w-48" />
+        <Skeleton className="mt-3 h-5 w-36" />
+      </div>
+      <div className="panel p-5">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="mt-5 h-5 w-full" />
+        <Skeleton className="mt-3 h-5 w-2/3" />
       </div>
     </div>
   );

@@ -1,57 +1,31 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { animate, useReducedMotion } from "motion/react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { pluralize } from "@/lib/format";
 
 type Props =
   | { loading: true }
-  | { loading?: false; total: number; waiting: number; inConsultation: number; completed: number };
+  | { loading?: false; total: number; waiting: number; booked: number; inConsultation: number; completed: number; noShow: number };
 
-/** Inline clinical figures, not dashboard cards. */
+/** One line of day metadata under the greeting. The queue is the hero; these are supporting figures, not KPI cards. */
 export function ClinicOverview(props: Props) {
-  const items = props.loading
-    ? [
-        { label: "Appointments", value: null },
-        { label: "Waiting", value: null },
-        { label: "In consultation", value: null },
-        { label: "Completed", value: null },
-      ]
-    : [
-        { label: "Appointments", value: props.total },
-        { label: "Waiting", value: props.waiting, tone: props.waiting > 0 ? "text-wait-700" : "" },
-        { label: "In consultation", value: props.inConsultation, tone: props.inConsultation > 0 ? "text-accent-700" : "" },
-        { label: "Completed", value: props.completed },
-      ];
+  if (props.loading) return <Skeleton className="h-4 w-72" aria-busy="true" />;
+
+  const parts: { text: string; tone?: string }[] = [
+    { text: pluralize(props.total, "appointment") },
+    { text: `${props.waiting} waiting`, tone: props.waiting > 0 ? "text-wait-700" : undefined },
+    ...(props.booked > 0 ? [{ text: `${props.booked} not yet arrived` }] : []),
+    { text: `${props.inConsultation} in consultation`, tone: props.inConsultation > 0 ? "text-accent-700" : undefined },
+    { text: `${props.completed} completed` },
+    ...(props.noShow > 0 ? [{ text: `${props.noShow} no-show` }] : []),
+  ];
 
   return (
-    <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:flex sm:gap-0 sm:divide-x sm:divide-line" aria-busy={props.loading || undefined}>
-      {items.map((it, i) => (
-        <div key={it.label} className={`sm:px-7 ${i === 0 ? "sm:pl-0" : ""} ${i === items.length - 1 ? "sm:pr-0" : ""}`}>
-          <dt className="eyebrow">{it.label}</dt>
-          <dd className={`mt-1 num text-[28px] font-medium leading-none tracking-[-0.02em] ${"tone" in it && it.tone ? it.tone : "text-ink"}`}>
-            {it.value === null ? <Skeleton className="mt-1 h-6 w-8" /> : <CountUp value={it.value} />}
-          </dd>
-        </div>
+    <p className="num text-[14px] text-ink-3">
+      {parts.map((p, i) => (
+        <span key={p.text}>
+          {i > 0 ? <span aria-hidden="true"> · </span> : null}
+          <span className={p.tone ? `font-medium ${p.tone}` : ""}>{p.text}</span>
+        </span>
       ))}
-    </dl>
+    </p>
   );
-}
-
-function CountUp({ value }: { value: number }) {
-  const reduce = useReducedMotion();
-  const [animated, setAnimated] = useState(0);
-  const from = useRef(0);
-  useEffect(() => {
-    if (reduce) return;
-    const controls = animate(from.current, value, {
-      type: "spring",
-      bounce: 0,
-      visualDuration: 0.6,
-      onUpdate: (v) => setAnimated(Math.round(v)),
-    });
-    from.current = value;
-    return () => controls.stop();
-  }, [value, reduce]);
-  return <>{reduce ? value : animated}</>;
 }

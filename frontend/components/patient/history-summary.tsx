@@ -41,17 +41,17 @@ export function HistorySummary({ patientId, visits }: { patientId: string; visit
   };
 
   return (
-    <section aria-labelledby="summary-h" aria-busy={state.status === "running" || undefined} className={`panel mb-5 overflow-hidden ${state.status === "done" ? "ai-surface" : ""}`}>
+    <section aria-labelledby="summary-h" aria-busy={state.status === "running" || undefined} className={`mb-5 overflow-hidden rounded-lg bg-surface-2/60 ${state.status === "done" ? "ai-surface" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div>
           <h3 id="summary-h" className="inline-flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-ink">
-            History summary
+            AI reading aid
             <AiMark />
           </h3>
           <p className="mt-0.5 text-[13px] text-ink-3">
             {state.status === "done"
-              ? `Written from ${pluralize(state.result.basedOn, "saved consultation")}. Read it as an aid, not as the record.`
-              : `A short read of ${pluralize(visits, "saved visit")} before you go in.`}
+              ? `From ${pluralize(state.result.basedOn, "saved consultation")}. Not part of the record.`
+              : `A short read of ${pluralize(visits, "saved visit")}.`}
           </p>
         </div>
         {state.status === "running" ? (
@@ -74,12 +74,12 @@ export function HistorySummary({ patientId, visits }: { patientId: string; visit
               <span className="skeleton block h-3.5 w-[78%]" />
               <span className="skeleton block h-3.5 w-[60%]" />
             </div>
-            <p className="mt-3 text-[12px] text-ink-4">Reading the saved consultations…</p>
+            <p className="mt-3 text-[12px] text-ink-3">Reading the saved consultations…</p>
           </motion.div>
         ) : state.status === "done" ? (
           <motion.div key="done" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={SPRING} className="border-t border-line px-5 py-4">
             <p className="max-w-3xl text-[15px] leading-[1.7] text-ink">{state.result.summary}</p>
-            <p className="num mt-3 text-[11px] text-ink-4">
+            <p className="num mt-3 text-[11px] text-ink-3">
               AI-generated · {state.result.model} · {(state.result.latencyMs / 1000).toFixed(1)}s
             </p>
           </motion.div>

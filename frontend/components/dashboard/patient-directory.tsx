@@ -10,7 +10,7 @@ import type { PatientDto } from "@/lib/api/types";
 import { formatGender, pluralize } from "@/lib/format";
 
 /** Every patient on the books, for walk-ins and anyone not on today's list. */
-export function PatientDirectory({ patients }: { patients: PatientDto[] }) {
+export function PatientDirectory({ patients, action }: { patients: PatientDto[]; action?: React.ReactNode }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const visible = patients.filter(
@@ -31,16 +31,19 @@ export function PatientDirectory({ patients }: { patients: PatientDto[] }) {
           </h2>
           <p className="mt-0.5 text-[13px] text-ink-3">{pluralize(patients.length, "patient")} on the books. Open anyone, scheduled or not.</p>
         </div>
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-4" aria-hidden="true" />
-          <Input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name, phone, condition or allergy"
-            aria-label="Search patients"
-            className="h-9 w-64 pl-8 sm:w-72"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-3" aria-hidden="true" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Name, phone, condition or allergy"
+              aria-label="Search patients"
+              className="h-9 w-64 pl-8 sm:w-72"
+            />
+          </div>
+          {action}
         </div>
       </div>
 
@@ -79,17 +82,17 @@ export function PatientDirectory({ patients }: { patients: PatientDto[] }) {
                   </div>
                   <div className="hidden min-w-0 md:block">
                     <p className="eyebrow">{p.allergies.length === 1 ? "Allergy" : "Allergies"}</p>
-                    <p className={`mt-0.5 truncate text-[13px] ${p.allergies.length ? "font-medium text-danger-700" : "text-ink-4"}`}>
+                    <p className={`mt-0.5 truncate text-[13px] ${p.allergies.length ? "font-medium text-danger-700" : "text-ink-3"}`}>
                       {p.allergies.length ? p.allergies.join(", ") : "None known"}
                     </p>
                   </div>
                   <div className="hidden min-w-0 md:block">
                     <p className="eyebrow">Conditions</p>
-                    <p className={`mt-0.5 truncate text-[13px] ${p.conditions.length ? "text-ink" : "text-ink-4"}`}>
+                    <p className={`mt-0.5 truncate text-[13px] ${p.conditions.length ? "text-ink" : "text-ink-3"}`}>
                       {p.conditions.length ? p.conditions.join(", ") : "None recorded"}
                     </p>
                   </div>
-                  <ArrowRightIcon className="size-4 text-ink-4 transition-[transform,color] duration-200 group-hover:translate-x-0.5 group-hover:text-ink" aria-hidden="true" />
+                  <ArrowRightIcon className="size-4 text-ink-3 transition-[transform,color] duration-200 group-hover:translate-x-0.5 group-hover:text-ink" aria-hidden="true" />
                 </li>
               );
             })}

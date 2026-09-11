@@ -1,4 +1,5 @@
 import { Suspense, cache } from "react";
+import { redirect } from "next/navigation";
 import { ClinicOverview } from "@/components/dashboard/clinic-overview";
 import { DayRail, DayRailSkeleton } from "@/components/dashboard/day-rail";
 import { PatientDirectory, PatientDirectorySkeleton } from "@/components/dashboard/patient-directory";
@@ -28,24 +29,24 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const selected = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
   const isToday = selected === today;
   const doctor = await getMe(); // memoized: the layout already fetched it for this request
+  if (doctor.role === "RECEPTIONIST") redirect("/front-desk");
 
   return (
     <div className="flex flex-col gap-10">
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <h1 className="display text-[40px] text-ink sm:text-[46px]">
-            {greeting(now.getHours())}, <span className="italic">{doctor.name}</span>
-          </h1>
-          <p className="mt-2 text-[15px] text-ink-3" suppressHydrationWarning>
-            {HEADLINE_DATE.format(isToday ? now : new Date(`${selected}T12:00:00`))}
-          </p>
+      <header>
+        <h1 className="display text-[40px] text-ink sm:text-[46px]">
+          {greeting(now.getHours())}, <span className="italic">{doctor.name}</span>
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-ink-3">
+          <p suppressHydrationWarning>{HEADLINE_DATE.format(isToday ? now : new Date(`${selected}T12:00:00`))}</p>
+          <span aria-hidden="true" className="hidden text-ink-3 sm:inline">—</span>
+          <Suspense key={`ov-${selected}`} fallback={<ClinicOverview loading />}>
+            <Overview date={selected} isToday={isToday} />
+          </Suspense>
         </div>
-        <Suspense key={`ov-${selected}`} fallback={<ClinicOverview loading />}>
-          <Overview date={selected} isToday={isToday} />
-        </Suspense>
       </header>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Suspense key={`sc-${selected}`} fallback={<ScheduleSkeleton />}>
           <Timeline date={selected} isToday={isToday} />
         </Suspense>
@@ -68,8 +69,10 @@ async function Overview({ date, isToday }: { date: string; isToday: boolean }) {
     <ClinicOverview
       total={appointments.length}
       waiting={count("WAITING")}
+      booked={count("BOOKED")}
       inConsultation={count("IN_CONSULTATION")}
       completed={count("COMPLETED")}
+      noShow={count("NO_SHOW")}
     />
   );
 }

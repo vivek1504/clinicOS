@@ -11,11 +11,14 @@ import { SafeLink } from "@/components/shared/safe-link";
 import { STATUS_LABEL } from "@/components/shared/status-badge";
 import type { AppointmentDto, AppointmentStatus } from "@/lib/api/types";
 import { formatShortDate, pluralize } from "@/lib/format";
+import { blockerFor } from "@/lib/visit";
 import { AppointmentRow } from "./appointment-row";
 
 export type AppointmentRowData = AppointmentDto & { time: string };
 
-const FILTERS: (AppointmentStatus | "ALL")[] = ["ALL", "WAITING", "IN_CONSULTATION", "COMPLETED"];
+const FILTERS: (AppointmentStatus | "ALL")[] = ["ALL", "BOOKED", "WAITING", "IN_CONSULTATION", "COMPLETED", "NO_SHOW", "CANCELLED"];
+/** Chips that only earn their place when non-empty. */
+const OPTIONAL_FILTERS = new Set<AppointmentStatus | "ALL">(["NO_SHOW", "CANCELLED"]);
 
 function shiftDate(date: string, days: number) {
   const d = new Date(`${date}T12:00:00`);
@@ -35,7 +38,7 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
       (!q || r.patient.name.toLowerCase().includes(q) || r.reason.toLowerCase().includes(q)),
   );
   const filtered = q !== "" || status !== "ALL";
-  const remaining = rows.filter((r) => r.status !== "COMPLETED").length;
+  const remaining = rows.filter((r) => r.status === "BOOKED" || r.status === "WAITING" || r.status === "IN_CONSULTATION").length;
   // The clinician's next action: the patient in the room, otherwise the earliest waiting one.
   const current = rows.find((r) => r.status === "IN_CONSULTATION") ?? rows.find((r) => r.status === "WAITING") ?? null;
   const goTo = (d: string) => router.replace(d === new Intl.DateTimeFormat("en-CA").format(new Date()) ? "/" : `/?date=${d}`);
@@ -56,20 +59,20 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-4" aria-hidden="true" />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative w-full sm:w-auto">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-3" aria-hidden="true" />
             <Input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search patient or reason"
               aria-label="Search appointments"
-              className="h-9 w-56 pl-8 sm:w-64"
+              className="h-9 w-full pl-8 sm:w-64"
             />
           </div>
 
-          <div className="flex items-center rounded-md bg-surface shadow-1">
+          <div className="flex w-fit items-center rounded-md bg-surface shadow-1">
             <Button variant="ghost" size="icon-sm" className="rounded-r-none" aria-label="Previous day" onClick={() => goTo(shiftDate(date, -1))}>
               <ChevronLeftIcon />
             </Button>
@@ -102,6 +105,7 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
         <div role="group" aria-label="Filter by status" className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2">
           {FILTERS.map((f) => {
             const n = f === "ALL" ? rows.length : rows.filter((r) => r.status === f).length;
+            if (OPTIONAL_FILTERS.has(f) && n === 0) return null;
             const active = status === f;
             return (
               <button
@@ -114,7 +118,7 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
                 }`}
               >
                 {f === "ALL" ? "All" : STATUS_LABEL[f]}
-                <span className={`num text-xs ${active ? "text-white/60" : "text-ink-4"}`}>{n}</span>
+                <span className={`num text-xs ${active ? "text-white/60" : "text-ink-3"}`}>{n}</span>
               </button>
             );
           })}
@@ -155,15 +159,20 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
           <ol className="relative" aria-label="Appointments">
             <span aria-hidden="true" className="absolute top-0 bottom-0 left-[9rem] hidden w-px bg-line sm:block" />
             {visible.map((a, i) => (
-              <AppointmentRow key={a.id} appointment={a} index={i} current={current?.id === a.id} />
+              <AppointmentRow
+                key={a.id}
+                appointment={a}
+                index={i}
+                current={current?.id === a.id}
+                blockedBy={blockerFor(a, rows)?.patient.name ?? null}
+              />
             ))}
           </ol>
         )}
 
         {rows.length > 0 ? (
-          <p className="mt-auto flex items-center justify-between border-t border-line px-5 py-3 text-xs text-ink-3">
-            <span>{filtered ? `Showing ${visible.length} of ${rows.length}` : pluralize(rows.length, "appointment")}</span>
-            <span>Click a row to open the patient</span>
+          <p className="mt-auto border-t border-line px-5 py-3 text-xs text-ink-3">
+            {filtered ? `Showing ${visible.length} of ${rows.length}` : pluralize(rows.length, "appointment")}
           </p>
         ) : null}
       </div>
@@ -191,14 +200,13 @@ export function ScheduleSkeleton({ rows = 4 }: { rows?: number }) {
           ))}
         </div>
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-6 border-b border-line px-5 py-5 last:border-0 sm:grid-cols-[5.5rem_1.5rem_1fr_8rem_9rem]">
+          <div key={i} className="grid grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-6 border-b border-line px-5 py-5 last:border-0 sm:grid-cols-[5.5rem_1.5rem_1fr_9rem]">
             <Skeleton className="h-4 w-16" />
             <Skeleton className="hidden size-2.5 rounded-full sm:block" />
             <div className="space-y-2">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-3.5 w-72 max-w-full" />
             </div>
-            <Skeleton className="hidden h-6 w-24 rounded-full sm:block" />
             <Skeleton className="h-8 w-full" />
           </div>
         ))}
