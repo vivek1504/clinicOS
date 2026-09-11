@@ -9,7 +9,7 @@ import { SafeLink } from "@/components/shared/safe-link";
 export function SavedState({ patientName, patientId, linkedToAppointment }: { patientName: string; patientId: string; linkedToAppointment: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <div role="status" className="flex flex-1 items-start py-6">
+    <div role="status" className="flex flex-1 items-center justify-center py-12">
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
