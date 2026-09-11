@@ -1,4 +1,5 @@
-export type AppointmentStatus = "WAITING" | "IN_CONSULTATION" | "COMPLETED";
+export type AppointmentStatus = "BOOKED" | "WAITING" | "IN_CONSULTATION" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
+export type StaffRole = "DOCTOR" | "RECEPTIONIST";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 
 export interface AppointmentDto {
@@ -9,7 +10,17 @@ export interface AppointmentDto {
   reason: string;
   status: AppointmentStatus;
   patient: { id: string; name: string };
+  doctor: { id: string; name: string };
   consultation?: { id: string } | null;
+}
+
+export interface PatientInput {
+  name: string;
+  dob: string; // YYYY-MM-DD
+  gender: Gender;
+  phone: string;
+  allergies?: string[];
+  conditions?: string[];
 }
 
 export interface PatientDto {

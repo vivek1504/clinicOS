@@ -5,6 +5,7 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public status: number,
+    public details?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -53,6 +54,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
       body?.error?.code ?? `HTTP_${res.status}`,
       body?.error?.message ?? res.statusText,
       res.status,
+      body?.error?.details,
     );
   }
 
