@@ -4,8 +4,8 @@ import type { Prisma } from "@prisma/client";
 export async function upsertStaff(tx: Prisma.TransactionClient, passwordHash: string) {
   await tx.user.upsert({
     where: { id: "doc_default" },
-    update: { name: "Dr. Mehta", email: "vivek@gmail.com", passwordHash, role: "DOCTOR" },
-    create: { id: "doc_default", name: "Dr. Mehta", email: "vivek@gmail.com", passwordHash, role: "DOCTOR" },
+    update: { name: "Dr. Vivek", email: "vivek@gmail.com", passwordHash, role: "DOCTOR" },
+    create: { id: "doc_default", name: "Dr. Vivek", email: "vivek@gmail.com", passwordHash, role: "DOCTOR" },
   });
   // Front desk sign-in: recp@gmail.com / pass123
   await tx.user.upsert({
