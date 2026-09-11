@@ -2,16 +2,19 @@ import { prisma } from "../../src/lib/prisma";
 
 export const TEST_PASSWORD = "correct horse";
 export const TEST_SESSION = "test-session-token";
+export const TEST_RECEPTION_SESSION = "test-reception-session-token";
 /** Request headers for a signed-in doctor. */
 export const authed = { cookie: `session=${TEST_SESSION}` };
+/** Request headers for a signed-in receptionist. */
+export const authedReception = { cookie: `session=${TEST_RECEPTION_SESSION}` };
 
 export async function resetTestDb() {
   // Truncate tables in reverse dependency order or CASCADE
   await prisma.$executeRawUnsafe(`
-    TRUNCATE TABLE "Session", "Consultation", "Appointment", "Patient", "Doctor" CASCADE;
+    TRUNCATE TABLE "Session", "Consultation", "Appointment", "Patient", "User" CASCADE;
   `);
 
-  const doctor = await prisma.doctor.create({
+  const doctor = await prisma.user.create({
     data: {
       id: "doc_default",
       name: "Dr. Default MD",
@@ -20,7 +23,13 @@ export async function resetTestDb() {
     },
   });
   await prisma.session.create({
-    data: { id: TEST_SESSION, doctorId: doctor.id, expiresAt: new Date(Date.now() + 60_000) },
+    data: { id: TEST_SESSION, userId: doctor.id, expiresAt: new Date(Date.now() + 60_000) },
+  });
+  const receptionist = await prisma.user.create({
+    data: { id: "rec_default", name: "Front Desk", email: "desk@test.local", role: "RECEPTIONIST", passwordHash: doctor.passwordHash },
+  });
+  await prisma.session.create({
+    data: { id: TEST_RECEPTION_SESSION, userId: receptionist.id, expiresAt: new Date(Date.now() + 60_000) },
   });
 
   const patient = await prisma.patient.create({

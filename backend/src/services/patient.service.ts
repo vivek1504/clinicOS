@@ -31,54 +31,94 @@ export interface PatientConsultationItemDto {
   wasAiEdited: boolean;
 }
 
+export interface PatientInput {
+  name: string;
+  dob: string; // YYYY-MM-DD
+  gender: Gender;
+  phone: string;
+  allergies?: string[];
+  conditions?: string[];
+}
+
+const toDto = (p: { id: string; name: string; dob: Date; gender: Gender; phone: string; allergies: string[]; conditions: string[] }): PatientDtoType => ({
+  id: p.id,
+  name: p.name,
+  dob: p.dob.toISOString().slice(0, 10),
+  age: getAge(p.dob),
+  gender: p.gender,
+  phone: p.phone,
+  allergies: p.allergies,
+  conditions: p.conditions,
+});
+
+const digits = (phone: string) => phone.replace(/\D/g, "");
+const cleanList = (xs?: string[]) => xs?.map((x) => x.trim()).filter(Boolean);
+
+const parseDob = (dob: string): Date => {
+  const d = new Date(`${dob}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d > new Date()) throw new AppError("VALIDATION", "Date of birth is not a valid past date");
+  return d;
+};
+
 export class PatientService {
+  /** Name or phone search; phone matches on digits so "555 0101" finds "+1-555-0101". */
   async listPatients(query?: string): Promise<PatientDtoType[]> {
     const q = query?.trim();
-
+    const qDigits = q ? digits(q) : "";
     const patients = await prisma.patient.findMany({
       where: q
-        ? {
-            name: {
-              contains: q,
-              mode: "insensitive",
-            },
-          }
+        ? { OR: [{ name: { contains: q, mode: "insensitive" } }, ...(qDigits.length >= 3 ? [{ phone: { contains: qDigits.slice(-4) } }] : [])] }
         : undefined,
       take: 25,
       orderBy: { name: "asc" },
     });
-
-    return patients.map((p) => ({
-      id: p.id,
-      name: p.name,
-      dob: p.dob.toISOString().slice(0, 10),
-      age: getAge(p.dob),
-      gender: p.gender as Gender,
-      phone: p.phone,
-      allergies: p.allergies,
-      conditions: p.conditions,
-    }));
+    return patients.filter((p) => !qDigits || qDigits.length < 3 || p.name.toLowerCase().includes(q!.toLowerCase()) || digits(p.phone).includes(qDigits)).map(toDto);
   }
 
   async getPatientById(id: string): Promise<PatientDtoType> {
-    const p = await prisma.patient.findUnique({
-      where: { id },
-    });
+    const p = await prisma.patient.findUnique({ where: { id } });
+    if (!p) throw new AppError("NOT_FOUND", `Patient not found: ${id}`);
+    return toDto(p);
+  }
 
-    if (!p) {
-      throw new AppError("NOT_FOUND", `Patient not found: ${id}`);
+  /** Refuses a second record with the same phone number unless the caller has seen the warning (`allowDuplicate`). */
+  async create(input: PatientInput & { allowDuplicate?: boolean }): Promise<PatientDtoType> {
+    const phone = input.phone.trim();
+    if (!input.allowDuplicate) {
+      const candidates = await prisma.patient.findMany({ where: { phone: { contains: digits(phone).slice(-4) } }, select: { id: true, name: true, phone: true } });
+      const existing = candidates.find((c) => digits(c.phone) === digits(phone));
+      if (existing) {
+        throw new AppError("CONFLICT", `${existing.name} is already registered with this phone number`, { patientId: existing.id, name: existing.name });
+      }
     }
+    const p = await prisma.patient.create({
+      data: {
+        name: input.name.trim(),
+        dob: parseDob(input.dob),
+        gender: input.gender,
+        phone,
+        allergies: cleanList(input.allergies) ?? [],
+        conditions: cleanList(input.conditions) ?? [],
+      },
+    });
+    return toDto(p);
+  }
 
-    return {
-      id: p.id,
-      name: p.name,
-      dob: p.dob.toISOString().slice(0, 10),
-      age: getAge(p.dob),
-      gender: p.gender as Gender,
-      phone: p.phone,
-      allergies: p.allergies,
-      conditions: p.conditions,
-    };
+  async update(id: string, patch: Partial<PatientInput>): Promise<PatientDtoType> {
+    const exists = await prisma.patient.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) throw new AppError("NOT_FOUND", `Patient not found: ${id}`);
+    const p = await prisma.patient.update({
+      where: { id },
+      data: {
+        ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+        ...(patch.dob !== undefined ? { dob: parseDob(patch.dob) } : {}),
+        ...(patch.gender !== undefined ? { gender: patch.gender } : {}),
+        ...(patch.phone !== undefined ? { phone: patch.phone.trim() } : {}),
+        ...(patch.allergies !== undefined ? { allergies: cleanList(patch.allergies) } : {}),
+        ...(patch.conditions !== undefined ? { conditions: cleanList(patch.conditions) } : {}),
+      },
+    });
+    return toDto(p);
   }
 
   async getConsultationsByPatientId(patientId: string): Promise<PatientConsultationItemDto[]> {

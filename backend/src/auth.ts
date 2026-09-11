@@ -1,7 +1,8 @@
 import { Elysia, t } from "elysia";
 import { env } from "./env";
 import { AppError } from "./lib/errors";
-import { AuthService, SESSION_TTL_MS } from "./services/auth.service";
+import { AuthService, SESSION_TTL_MS, type DoctorDto } from "./services/auth.service";
+import type { Role } from "@prisma/client";
 import { MeResponse, SignInBody } from "./schemas/auth";
 import { ErrorEnvelope } from "./schemas/common";
 
@@ -27,10 +28,17 @@ export const sessionPlugin = new Elysia({ name: "session" }).resolve({ as: "glob
   doctor: await authService.doctorForToken(tokenFrom(cookie)),
 }));
 
-/** Routes registered after this hook require a signed-in doctor. */
-export const requireDoctor = new Elysia({ name: "require-doctor" }).onBeforeHandle({ as: "global" }, (ctx) => {
-  if (!("doctor" in ctx) || !ctx.doctor) throw new AppError("UNAUTHORIZED", "Sign in to continue");
-});
+/** Throws unless `user` is signed in with one of `roles`. */
+export function assertRole(user: DoctorDto | null | undefined, ...roles: Role[]): void {
+  if (!user) throw new AppError("UNAUTHORIZED", "Sign in to continue");
+  if (!roles.includes(user.role)) throw new AppError("FORBIDDEN", "Your role cannot do this");
+}
+
+/** Routes registered after this hook require a signed-in user with one of `roles`. */
+export const requireRole = (...roles: Role[]) =>
+  new Elysia({ name: `require-${roles.join("+")}` }).onBeforeHandle({ as: "global" }, (ctx) => {
+    assertRole("doctor" in ctx ? (ctx.doctor as DoctorDto | null) : null, ...roles);
+  });
 
 export const authRoutes = new Elysia({ prefix: "/auth" })
   .use(sessionPlugin)

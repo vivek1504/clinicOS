@@ -1,41 +1,36 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { AppointmentService } from "../services/appointment.service";
-import {
-  AppointmentDto,
-  GetAppointmentsQuery,
-  PatchAppointmentStatusBody,
-} from "../schemas/appointment";
+import { AppointmentDto, CreateAppointmentBody, GetAppointmentsQuery, PatchAppointmentBody } from "../schemas/appointment";
 import { IdParams, ErrorEnvelope } from "../schemas/common";
-import { t } from "elysia";
+import { AppError } from "../lib/errors";
+import { sessionPlugin } from "../auth";
 
 export const appointmentRoutes = new Elysia({ prefix: "/appointments" })
+  .use(sessionPlugin)
   .decorate("appointmentService", new AppointmentService())
   .get(
     "",
-    async ({ query, appointmentService }) => {
-      return await appointmentService.listAppointments(query.date);
+    async ({ query, appointmentService }) => appointmentService.listAppointments(query.date, query.patientId),
+    { query: GetAppointmentsQuery, response: { 200: t.Array(AppointmentDto), 400: ErrorEnvelope } }
+  )
+  .post(
+    "",
+    async ({ body, set, appointmentService }) => {
+      set.status = 201;
+      return await appointmentService.create(body);
     },
-    {
-      query: GetAppointmentsQuery,
-      response: {
-        200: t.Array(AppointmentDto),
-        400: ErrorEnvelope,
-      },
-    }
+    { body: CreateAppointmentBody, response: { 201: AppointmentDto, 400: ErrorEnvelope, 404: ErrorEnvelope, 409: ErrorEnvelope } }
   )
   .patch(
     "/:id",
-    async ({ params, body, appointmentService }) => {
-      return await appointmentService.patchStatus(params.id, body.status);
+    async ({ params, body, appointmentService, doctor }) => {
+      if (body.status) return await appointmentService.patchStatus(params.id, body.status, doctor!);
+      if (body.scheduledAt || body.reason) return await appointmentService.reschedule(params.id, body);
+      throw new AppError("VALIDATION", "Nothing to change");
     },
     {
       params: IdParams,
-      body: PatchAppointmentStatusBody,
-      response: {
-        200: AppointmentDto,
-        400: ErrorEnvelope,
-        404: ErrorEnvelope,
-        409: ErrorEnvelope,
-      },
+      body: PatchAppointmentBody,
+      response: { 200: AppointmentDto, 400: ErrorEnvelope, 403: ErrorEnvelope, 404: ErrorEnvelope, 409: ErrorEnvelope },
     }
   );

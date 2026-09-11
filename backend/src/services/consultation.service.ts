@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../lib/errors";
+import { assertCanStart } from "./queue";
 import { normalizeNote, deepEqual } from "../ai/normalize";
 import type { StructuredNoteType } from "../ai/schema";
 
@@ -96,6 +97,12 @@ export class ConsultationService {
         if (existingApptConsultation) {
           throw new AppError("CONFLICT", `Appointment ${data.appointmentId} already has a consultation`);
         }
+
+        if (appt.status === "CANCELLED") {
+          throw new AppError("CONFLICT", `Appointment ${data.appointmentId} was cancelled`);
+        }
+        // Skipping straight to COMPLETED still has to respect the room and the queue.
+        if (appt.status !== "IN_CONSULTATION") await assertCanStart(tx, appt);
       }
 
       // 3. Normalize finalNote and aiDraft

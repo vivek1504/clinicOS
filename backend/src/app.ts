@@ -8,7 +8,8 @@ import { appointmentRoutes } from "./routes/appointments";
 import { patientRoutes } from "./routes/patients";
 import { consultationRoutes } from "./routes/consultations";
 import { aiRoutes } from "./routes/ai";
-import { authRoutes, requireDoctor, sessionPlugin } from "./auth";
+import { authRoutes, requireRole, sessionPlugin } from "./auth";
+import { staffRoutes } from "./routes/staff";
 import { GeminiProvider } from "./ai/gemini.provider";
 import { FakeAiProvider } from "./ai/fake.provider";
 
@@ -63,10 +64,13 @@ export const buildApp = (deps: { ai: AiProvider }) =>
     .get("/health", () => ({ ok: true }))
     .use(sessionPlugin)
     .use(authRoutes)
-    // Everything below needs a signed-in doctor.
-    .use(requireDoctor)
+    // Front desk and clinical staff share the schedule and the patient list.
+    .use(requireRole("DOCTOR", "RECEPTIONIST"))
     .use(appointmentRoutes)
     .use(patientRoutes)
+    .use(staffRoutes)
+    // Clinical content and AI are for doctors only.
+    .use(requireRole("DOCTOR"))
     .use(consultationRoutes)
     .use(aiRoutes(deps.ai));
 
