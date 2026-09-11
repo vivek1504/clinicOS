@@ -31,7 +31,7 @@ async function seed() {
     await tx.$executeRawUnsafe(`TRUNCATE TABLE "Consultation", "Appointment", "Patient" CASCADE`);
 
     // 1. Staff (doctor + receptionist), shared with the deploy-time script
-    const passwordHash = await Bun.password.hash("clinicos");
+    const passwordHash = await Bun.password.hash("pass123");
     await upsertStaff(tx, passwordHash);
 
     // 2. Patients

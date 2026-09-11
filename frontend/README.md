@@ -32,7 +32,7 @@ Other scripts: `bun run build`, `bun run start`, `bun run lint`, `bun test`, `bu
 | `/` | Today's appointments. Skeleton while loading, empty state, inline error with Retry. Row click opens the patient; **Start** / **Continue** jumps straight to a linked consultation. |
 | `/patients/[id]` | Card-based record: identity card with personal information, medications mentioned in notes (first/last noted), diagnoses & conditions, allergies, then a chronological clinical timeline. Expand a visit for the structured note; **Compare with AI draft** puts the generated draft and the saved note side by side with the doctor's changes marked. |
 | `/patients/[id]/consultation` | Three-column workspace: patient context rail, **Doctor notes**, **AI structured note**. Generate → staged processing state → editable draft. AI-drafted items carry the iris `AI` mark; editing one flips it to doctor styling with "Edited by doctor". `missingInformation` is an advisory list, never note content. Save shows an in-place confirmation and marks the linked appointment completed. |
-| `/sign-in` | Signs in against `POST /auth/sign-in`; honours `?next=` and shows a notice when redirected for an expired session. Demo account: `mehta@clinicos.local` / `clinicos`. |
+| `/sign-in` | Signs in against `POST /auth/sign-in`; honours `?next=` and shows a notice when redirected for an expired session. Demo accounts: doctor `vivek@gmail.com`, receptionist `recp@gmail.com`, password `pass123`. |
 
 ## Design system
 

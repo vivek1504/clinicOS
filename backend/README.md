@@ -96,7 +96,7 @@ Cookie sessions, no external dependency:
 
 Passwords are hashed with `Bun.password` (argon2id). Session tokens are random UUIDs stored in the `Session` table; expired rows are deleted on first use.
 
-Seeded demo account: `mehta@clinicos.local` / `clinicos`.
+Seeded demo accounts: doctor `vivek@gmail.com`, receptionist `recp@gmail.com`, password `pass123`.
 
 ## Architecture
 

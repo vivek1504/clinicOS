@@ -7,7 +7,7 @@ const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL must be defined");
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
-const passwordHash = await Bun.password.hash("clinicos");
+const passwordHash = await Bun.password.hash("pass123");
 await prisma.$transaction((tx) => upsertStaff(tx, passwordHash));
 console.log("Staff accounts ensured.");
 await prisma.$disconnect();

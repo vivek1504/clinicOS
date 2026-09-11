@@ -198,10 +198,10 @@ The frontend will be running on `http://localhost:3000`.
 
 ### Demo Credentials
 
-| Field | Value |
-|---|---|
-| **Doctor Email** | `mehta@clinicos.local` |
-| **Password** | `clinicos` |
+| Role | Email | Password |
+|---|---|---|
+| **Doctor** | `vivek@gmail.com` | `pass123` |
+| **Receptionist** | `recp@gmail.com` | `pass123` |
 
 ---
 
