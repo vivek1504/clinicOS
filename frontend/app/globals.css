@@ -28,8 +28,8 @@
   --color-line-strong: #d3d0c8;
   --color-ink: #16181b;
   --color-ink-2: #4d5158;
-  --color-ink-3: #7d828b;
-  --color-ink-4: #a6aab2;
+  --color-ink-3: #666b73; /* 4.9:1 on the canvas; was #7d828b at 3.5:1 */
+  --color-ink-4: #858990; /* decorative only; never for text a person must read */
 
   /* Clinical accent — surgical green */
   --color-accent-50: #eef6f2;
@@ -55,7 +55,7 @@
   /* Status */
   --color-wait-100: #fbf1dc;
   --color-wait-300: #f0d59a;
-  --color-wait-700: #9a6a12;
+  --color-wait-700: #916310; /* was #9a6a12 at 4.3:1 */
   --color-done-100: #edf7f0;
   --color-done-700: #2f6f4a;
   --color-danger-100: #fcecec;
@@ -232,7 +232,7 @@ html {
     line-height: 1.05;
   }
   .eyebrow {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;

@@ -35,12 +35,12 @@ export function StructuredNoteView({
     <dl className={`grid ${compact ? "gap-4" : "gap-5 sm:grid-cols-[9rem_1fr] sm:gap-x-8 sm:gap-y-5"} text-sm`}>
       <dt className="eyebrow sm:pt-0.5">Chief complaint</dt>
       <dd className="-mt-3 text-[15px] font-medium text-ink sm:mt-0">
-        {note.chiefComplaint ? <span className={ccChanged ? mark : ""}>{note.chiefComplaint}</span> : <span className="font-normal text-ink-4 italic">Not recorded</span>}
+        {note.chiefComplaint ? <span className={ccChanged ? mark : ""}>{note.chiefComplaint}</span> : <span className="font-normal text-ink-3 italic">Not recorded</span>}
       </dd>
       {NOTE_SECTIONS.map(({ key, label }) => (
         <Section key={key} label={label} compact={compact}>
           {note[key].length === 0 ? (
-            <span className="text-ink-4 italic">None recorded</span>
+            <span className="text-ink-3 italic">None recorded</span>
           ) : (
             <ul className="space-y-1.5">
               {note[key].map((item, i) => (

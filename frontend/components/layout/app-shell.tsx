@@ -34,7 +34,7 @@ export function AppShell({ doctor, children }: { doctor: DoctorDto; children: Re
       </main>
 
       <footer className="border-t border-line/80">
-        <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-1 px-5 py-4 text-xs text-ink-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-1 px-5 py-4 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p>ClinicOS · Clinical use only</p>
           <p>AI drafts are reviewed by the clinician before any note is saved.</p>
         </div>

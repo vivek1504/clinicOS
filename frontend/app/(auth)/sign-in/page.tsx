@@ -33,7 +33,7 @@ export default function SignInPage() {
             <SignInForm />
           </Suspense>
         </div>
-        <p className="mt-10 text-xs text-ink-4">For clinical staff only. Access is monitored and logged.</p>
+        <p className="mt-10 text-xs text-ink-3">For clinical staff only. Access is monitored and logged.</p>
       </section>
     </main>
   );
