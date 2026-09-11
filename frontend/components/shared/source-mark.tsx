@@ -1,12 +1,3 @@
-/** Row-level marker for a model-drafted item: the row's tint carries the meaning visually, this carries it for screen readers. */
-export function AiDot() {
-  return (
-    <span className="size-1.5 shrink-0 rounded-full bg-ai-500">
-      <span className="sr-only">AI draft: </span>
-    </span>
-  );
-}
-
 /** The small monogram that marks anything the model produced. */
 export function AiMark({ className = "" }: { className?: string }) {
   return (

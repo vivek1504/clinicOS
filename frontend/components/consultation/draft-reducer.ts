@@ -37,6 +37,8 @@ export interface EditorState {
   ai: AiStatus;
   /** Raw notes were edited after the current draft was generated. */
   notesChangedSinceDraft: boolean;
+  /** How many AI drafts have been produced this session; 0 until the first. */
+  draftVersion: number;
   /** What a regenerate replaced, so it is one click away. Session only; not persisted. */
   previous: PreviousDraft | null;
   dirty: boolean;
@@ -70,6 +72,7 @@ export function initialEditorState(clientRequestId: string = newId()): EditorSta
     ai: { status: "idle" },
     notesChangedSinceDraft: false,
     previous: null,
+    draftVersion: 0,
     dirty: false,
   };
 }
@@ -106,6 +109,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         draft: fromAiDraft(action.response.draft),
         missingInformation: action.response.draft.missingInformation,
         aiMeta: aiMetaFrom(action.response),
+        draftVersion: state.draftVersion + 1,
         notesChangedSinceDraft: false,
       });
 
@@ -173,6 +177,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         missingInformation: action.snapshot.missingInformation,
         aiMeta: action.snapshot.aiMeta,
         ai: action.snapshot.aiDraft ? { status: "done" } : { status: "idle" },
+        draftVersion: action.snapshot.aiDraft ? 1 : 0,
         notesChangedSinceDraft: false,
       });
 

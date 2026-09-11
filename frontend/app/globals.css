@@ -258,21 +258,32 @@ html {
       linear-gradient(180deg, rgb(244 243 252 / 0.7), rgb(255 255 255 / 0)) top / 100% 160px no-repeat,
       var(--color-surface);
   }
+  /* Draft rows read as a document: a thin provenance rule on the left, a field only while hovered or focused. */
   .ai-item {
-    border-color: var(--color-ai-200);
-    background: var(--color-ai-50);
-  }
-  .ai-item:focus-within {
-    border-color: var(--color-ai-500);
-    box-shadow: 0 0 0 3px rgb(106 98 208 / 0.16);
+    border-left-color: var(--color-ai-300);
+    background: transparent;
   }
   .doctor-item {
-    border-color: var(--color-line);
-    background: var(--color-surface);
+    border-left-color: var(--color-accent-500);
+    background: transparent;
+  }
+  .ai-item:hover,
+  .doctor-item:hover {
+    background: var(--color-surface-2);
+  }
+  .ai-item:focus-within {
+    border-left-color: var(--color-ai-500);
+    background: var(--color-ai-50);
+    box-shadow: inset 0 0 0 1px var(--color-ai-200);
   }
   .doctor-item:focus-within {
-    border-color: var(--color-accent-500);
-    box-shadow: 0 0 0 3px rgb(31 122 99 / 0.14);
+    background: var(--color-surface);
+    box-shadow: inset 0 0 0 1px var(--color-accent-500);
+  }
+
+  /* Focus mode: set by the consultation workspace while it is mounted. Secondary chrome steps back. */
+  html[data-focus="consultation"] #site-footer {
+    display: none;
   }
 
   .skeleton {
@@ -317,7 +328,7 @@ html {
 @layer components {
   .chrome,
   .topbar {
-    background: rgb(246 245 242 / 0.82);
+    background: rgb(246 245 242 / 0.94);
     backdrop-filter: blur(16px) saturate(160%);
     -webkit-backdrop-filter: blur(16px) saturate(160%);
   }
@@ -362,11 +373,14 @@ html {
 }
 
 @media (prefers-contrast: more) {
-  .panel,
+  .panel {
+    box-shadow: none;
+    border: 1px solid var(--color-ink-3);
+  }
   .ai-item,
   .doctor-item {
     box-shadow: none;
-    border: 1px solid var(--color-ink-3);
+    border-left-width: 3px;
   }
   .eyebrow {
     color: var(--color-ink-2);
