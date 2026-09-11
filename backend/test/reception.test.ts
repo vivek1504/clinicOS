@@ -49,33 +49,39 @@ describe("Receptionist role", () => {
     const patch = (status: string, headers = authedReception) =>
       call(`/appointments/${appointmentId}`, { method: "PATCH", headers: json(headers), body: JSON.stringify({ status }) });
 
-    expect((await patch("IN_CONSULTATION")).status).toBe(403);
+    expect((await patch("IN_CONSULTATION")).status).toBe(409); // nobody starts a patient who has not been checked in
     expect((await patch("WAITING")).status).toBe(200); // check-in
+    expect((await patch("IN_CONSULTATION")).status).toBe(403); // checked in, but only a doctor may start
     expect((await patch("NO_SHOW")).status).toBe(200);
     expect((await patch("WAITING")).status).toBe(200);
     expect((await patch("CANCELLED")).status).toBe(200);
     expect((await patch("BOOKED")).status).toBe(200); // undo
-    expect((await patch("IN_CONSULTATION", authed)).status).toBe(200); // doctor may start straight from BOOKED
+    expect((await patch("WAITING", authed)).status).toBe(403); // doctors do not check patients in
+    expect((await patch("IN_CONSULTATION", authed)).status).toBe(409); // and cannot start one who has not been checked in
+    expect((await patch("WAITING")).status).toBe(200);
+    expect((await patch("IN_CONSULTATION", authed)).status).toBe(200);
   });
 
-  it("registers patients, warns about a duplicate phone, and allows an explicit override", async () => {
-    const body = { name: "New Person", dob: "1990-05-05", gender: "OTHER", phone: "+1 (555) 9999" };
+  it("registers patients and refuses a duplicate phone number outright", async () => {
+    const body = { name: "New Person", dob: "1990-05-05", gender: "OTHER", phone: "9876599999" };
     const dup = await call("/patients", { method: "POST", headers: json(authedReception), body: JSON.stringify(body) });
     expect(dup.status).toBe(409);
     const err = (await dup.json()) as any;
     expect(err.error.details.patientId).toBe("pat_test_1");
 
-    const ok = await call("/patients", { method: "POST", headers: json(authedReception), body: JSON.stringify({ ...body, allowDuplicate: true, allergies: [" Latex ", ""] }) });
+    const ok = await call("/patients", { method: "POST", headers: json(authedReception), body: JSON.stringify({ ...body, phone: "9876543210", allergies: [" Latex ", ""] }) });
     expect(ok.status).toBe(201);
     const created = (await ok.json()) as any;
     expect(created.allergies).toEqual(["Latex"]);
 
-    const edited = await call(`/patients/${created.id}`, { method: "PATCH", headers: json(authedReception), body: JSON.stringify({ phone: "+1-555-0000" }) });
+    const edited = await call(`/patients/${created.id}`, { method: "PATCH", headers: json(authedReception), body: JSON.stringify({ phone: "9876500000" }) });
     expect(edited.status).toBe(200);
-    expect(((await edited.json()) as any).phone).toBe("+1-555-0000");
+    expect(((await edited.json()) as any).phone).toBe("9876500000");
+    // Anything but ten digits is refused.
+    expect((await call(`/patients/${created.id}`, { method: "PATCH", headers: json(authedReception), body: JSON.stringify({ phone: "+91 98765 00000" }) })).status).toBe(400);
 
     // Phone search finds by digits.
-    const found = (await (await call("/patients?q=555%200000", { headers: authedReception })).json()) as any[];
+    const found = (await (await call("/patients?q=500000", { headers: authedReception })).json()) as any[];
     expect(found.map((p) => p.id)).toEqual([created.id]);
   });
 
@@ -89,20 +95,28 @@ describe("Receptionist role", () => {
 
     const past = await book(at(0, 1));
     expect(past.status).toBe(400); // earlier today: refused
+    expect((await book(tomorrowAt(10, 20))).status).toBe(400); // off the 15-minute grid: refused
     const first = await book(tomorrowAt(10));
     expect(first.status).toBe(201);
     const created = (await first.json()) as any;
     expect(created.status).toBe("BOOKED");
     expect(created.doctor.name).toBe("Dr. Default MD");
 
-    expect((await book(tomorrowAt(10))).status).toBe(409);
+    // The same patient cannot hold two open appointments on one day, whatever the slot.
+    const twice = await book(tomorrowAt(10, 15));
+    expect(twice.status).toBe(409);
+    expect(((await twice.json()) as any).error.message).toMatch(/already has an open appointment/);
     expect((await book(tomorrowAt(10), { doctorId: "rec_default" })).status).toBe(404); // receptionists cannot be booked
-    const walkIn = (await (await book(new Date(), { status: "WAITING" })).json()) as any; // "now" is inside the grace window
+
+    // Another patient into the same slot: refused. Walk-ins are "now" and need no slot.
+    const other = (await (await call("/patients", { method: "POST", headers: json(authedReception), body: JSON.stringify({ name: "Second Person", dob: "1985-02-02", gender: "MALE", phone: "9876511111" }) })).json()) as any;
+    expect((await book(tomorrowAt(10), { patientId: other.id })).status).toBe(409);
+    const walkIn = (await (await book(new Date(), { patientId: other.id, status: "WAITING" })).json()) as any; // "now" is inside the grace window
     expect(walkIn.status).toBe("WAITING");
 
     // Per-patient listing ignores the day window and returns newest first.
     const mine = (await (await call("/appointments?patientId=pat_test_1", { headers: authedReception })).json()) as any[];
-    expect(mine.length).toBeGreaterThanOrEqual(3);
+    expect(mine.length).toBeGreaterThanOrEqual(2);
     expect(mine[0].scheduledAt >= mine[1].scheduledAt).toBe(true);
 
     const moved = await call(`/appointments/${created.id}`, {
@@ -113,8 +127,10 @@ describe("Receptionist role", () => {
     expect(moved.status).toBe(200);
     expect(((await moved.json()) as any).reason).toBe("Check-up, moved");
     // Into a taken slot: refused.
-    // Into the walk-in's slot is a clash only if it is still in the future; use a fresh future booking instead.
-    await book(tomorrowAt(12));
+    // Into a slot another patient holds: refused.
+    // Cancelling the walk-in frees the other patient to be booked again that day.
+    await call(`/appointments/${walkIn.id}`, { method: "PATCH", headers: json(authedReception), body: JSON.stringify({ status: "CANCELLED" }) });
+    expect((await book(tomorrowAt(12), { patientId: other.id })).status).toBe(201);
     const clash = await call(`/appointments/${created.id}`, { method: "PATCH", headers: json(authedReception), body: JSON.stringify({ scheduledAt: tomorrowAt(12).toISOString() }) });
     expect(clash.status).toBe(409);
   });

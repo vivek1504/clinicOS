@@ -23,9 +23,9 @@ export function todaysVisit({
   return { recorded: appointment?.status === "COMPLETED", appointment, blockedBy: blockerFor(appointment, appointments) };
 }
 
-/** Same rule, for any row on the schedule. Only WAITING and IN_CONSULTATION block; BOOKED (not checked in) does not. */
+/** Same rule, for any row on the schedule. Only a WAITING row can start; only WAITING and IN_CONSULTATION block. Arrival is the front desk's call. */
 export function blockerFor(appointment: AppointmentDto | null, appointments: AppointmentDto[]): AppointmentDto | null {
-  if (!appointment || !["BOOKED", "WAITING", "NO_SHOW"].includes(appointment.status)) return null;
+  if (!appointment || appointment.status !== "WAITING") return null;
   const others = appointments.filter((a) => a.id !== appointment.id && (a.status === "WAITING" || a.status === "IN_CONSULTATION"));
   return (
     others.find((a) => a.status === "IN_CONSULTATION") ??

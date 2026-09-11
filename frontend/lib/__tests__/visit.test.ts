@@ -30,17 +30,17 @@ describe("blockedBy", () => {
     expect(todaysVisit({ patientId: "d", appointments: rows }).blockedBy?.id).toBe("b");
   });
 
-  test("a no-show neither blocks nor is blocked by those behind; it can rejoin when the room is free", () => {
+  test("a no-show neither blocks nor is blocked; it is not startable until the front desk checks it in", () => {
     const rows = [row("a", "NO_SHOW", 8), row("b", "WAITING", 9), row("c", "WAITING", 10)];
     expect(todaysVisit({ patientId: "b", appointments: rows }).blockedBy).toBeNull();
     expect(todaysVisit({ patientId: "c", appointments: rows }).blockedBy?.id).toBe("b");
     expect(todaysVisit({ patientId: "a", appointments: rows }).blockedBy).toBeNull();
   });
 
-  test("a BOOKED patient who has not checked in does not hold up those behind, but is held by those ahead", () => {
+  test("a BOOKED patient who has not checked in does not hold up those behind and is not startable", () => {
     const rows = [row("a", "BOOKED", 8), row("b", "WAITING", 9), row("c", "BOOKED", 10), row("x", "CANCELLED", 7)];
     expect(todaysVisit({ patientId: "b", appointments: rows }).blockedBy).toBeNull();
-    expect(todaysVisit({ patientId: "c", appointments: rows }).blockedBy?.id).toBe("b");
+    expect(todaysVisit({ patientId: "c", appointments: rows }).blockedBy).toBeNull();
     expect(todaysVisit({ patientId: "x", appointments: rows }).appointment).toBeNull();
   });
 

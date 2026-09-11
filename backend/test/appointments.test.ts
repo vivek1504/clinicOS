@@ -62,11 +62,14 @@ describe("Room and queue rules", () => {
     expect((await patch(second, "IN_CONSULTATION")).status).toBe(200);
     expect((await patch(second, "WAITING")).status).toBe(200);
 
-    // The 08:00 patient turns up after all: they are back in the queue and ahead of 09:00 again.
-    expect((await patch(first, "WAITING")).status).toBe(200);
+    // The 08:00 patient turns up after all: only the front desk can put them back; then they are ahead of 09:00 again.
+    expect((await patch(first, "WAITING")).status).toBe(403);
+    expect((await patch(first, "WAITING", authedReception)).status).toBe(200);
     expect(((await (await patch(second, "IN_CONSULTATION")).json()) as any).error.code).toBe("QUEUE_ORDER");
     expect((await patch(first, "NO_SHOW", authedReception)).status).toBe(200);
-    // A returning no-show can go straight in when the room is free.
+    // A returning no-show is checked in by the front desk, then the doctor starts them.
+    expect((await patch(first, "IN_CONSULTATION")).status).toBe(409); // still NO_SHOW: never legal for a doctor
+    expect((await patch(first, "WAITING", authedReception)).status).toBe(200);
     expect((await patch(first, "IN_CONSULTATION")).status).toBe(200);
     expect(((await (await patch(second, "IN_CONSULTATION")).json()) as any).error.code).toBe("ALREADY_IN_CONSULTATION");
   });

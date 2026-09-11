@@ -38,7 +38,7 @@ export async function resetTestDb() {
       name: "Test Patient",
       dob: new Date("1990-01-01"),
       gender: "FEMALE",
-      phone: "+1-555-9999",
+      phone: "9876599999",
       allergies: ["Peanuts"],
       conditions: ["Asthma"],
     },

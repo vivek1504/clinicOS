@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, useReducedMotion } from "motion/react";
-import { patchAppointmentStatus } from "@/lib/api/appointments";
-import type { AppointmentStatus } from "@/lib/api/types";
 import { SPRING } from "@/components/shared/reveal";
 import { SafeLink } from "@/components/shared/safe-link";
 import { STATUS_LABEL, StatusBadge } from "@/components/shared/status-badge";
@@ -30,22 +26,6 @@ export function AppointmentRow({
   const booked = a.status === "BOOKED";
   const cancelled = a.status === "CANCELLED";
   const muted = done || noShow || cancelled;
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-  // Front-desk style status change; the server is the truth, so refresh rather than guess.
-  const mark = async (status: AppointmentStatus) => {
-    setBusy(true);
-    setFailed(false);
-    try {
-      await patchAppointmentStatus(a.id, status);
-      router.refresh();
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  };
   const profileHref = done ? `/patients/${a.patientId}` : `/patients/${a.patientId}?appointmentId=${encodeURIComponent(a.id)}`;
   const consultHref = `/patients/${a.patientId}/consultation?appointmentId=${encodeURIComponent(a.id)}`;
   const [clock, meridiem] = a.time.split(" ");
@@ -100,15 +80,8 @@ export function AppointmentRow({
             <StatusBadge status={a.status} />
           </span>
         )}
-        {failed ? (
-          <span role="alert" className="hidden text-[11px] font-medium text-danger-700 sm:inline">
-            Couldn&apos;t update
-          </span>
-        ) : null}
         {noShow || booked ? (
-          <Button variant="secondary" size="sm" className="hidden sm:inline-flex" disabled={busy} loading={busy} onClick={() => void mark("WAITING")}>
-            Arrived
-          </Button>
+          <span className="hidden text-[12px] text-ink-3 sm:inline">{noShow ? "Front desk marks arrival" : "Not checked in yet"}</span>
         ) : cancelled ? null : done ? (
           <Button variant="ghost" size="sm" className="hidden text-ink-3 group-hover:text-ink sm:inline-flex" render={<SafeLink href={profileHref} />}>
             View record
