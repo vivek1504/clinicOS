@@ -46,13 +46,10 @@ export function TimelineEntry({ consultation: c, index }: { consultation: Consul
             <p className="text-[17px] font-medium tracking-[-0.01em] text-ink">
               {title ?? <span className="font-normal text-ink-3 italic">No chief complaint recorded</span>}
             </p>
-            <p className={`mt-1 text-[13px] leading-relaxed text-ink-3 ${open ? "" : "line-clamp-2"}`}>{notePreview}</p>
-            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-ink-3">
+            <p className={`mt-1 text-[14px] leading-relaxed text-ink-2 ${open ? "" : "line-clamp-2"}`}>{notePreview}</p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-medium text-ink-3">
               {c.wasAiUsed ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <AiMark />
-                  {c.wasAiEdited ? "AI-assisted, reviewed by doctor" : "AI-assisted"}
-                </span>
+                <span>{c.wasAiEdited ? "AI-assisted, reviewed by doctor" : "AI-assisted"}</span>
               ) : (
                 <span>Written by doctor</span>
               )}
@@ -107,10 +104,7 @@ export function TimelineEntry({ consultation: c, index }: { consultation: Consul
                     <span />
                   )}
                   {c.aiModel ? (
-                    <span className="num">
-                      {c.aiModel}
-                      {c.aiLatencyMs != null ? ` · ${(c.aiLatencyMs / 1000).toFixed(1)}s` : ""}
-                    </span>
+                    <span className="num">{c.aiModel}</span>
                   ) : null}
                 </div>
               </div>

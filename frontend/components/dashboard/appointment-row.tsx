@@ -9,7 +9,7 @@ import { patchAppointmentStatus } from "@/lib/api/appointments";
 import type { AppointmentStatus } from "@/lib/api/types";
 import { SPRING } from "@/components/shared/reveal";
 import { SafeLink } from "@/components/shared/safe-link";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { STATUS_LABEL, StatusBadge } from "@/components/shared/status-badge";
 import type { AppointmentDto } from "@/lib/api/types";
 
 export function AppointmentRow({
@@ -92,11 +92,14 @@ export function AppointmentRow({
       </div>
 
       <div className="relative z-10 flex items-center justify-end gap-2">
-        {a.status !== "WAITING" ? (
+        {/* Waiting is the default and says nothing; done and booked are routine and read as text; the rest earn a pill. */}
+        {a.status === "WAITING" ? null : a.status === "COMPLETED" || a.status === "BOOKED" ? (
+          <span className="hidden text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase sm:inline">{STATUS_LABEL[a.status]}</span>
+        ) : (
           <span className="hidden sm:inline-flex">
             <StatusBadge status={a.status} />
           </span>
-        ) : null}
+        )}
         {failed ? (
           <span role="alert" className="hidden text-[11px] font-medium text-danger-700 sm:inline">
             Couldn&apos;t update

@@ -28,12 +28,14 @@ export function ClinicalTimeline({ consultations, patientId }: { consultations: 
       ) : (
         <>
           <HistorySummary patientId={patientId} visits={rows.length} />
+          <div className="panel px-5">
           <ol className="relative">
           <span aria-hidden="true" className="absolute top-3 bottom-3 left-[7.25rem] hidden w-px bg-line md:block" />
           {rows.map((c, i) => (
             <TimelineEntry key={c.id} consultation={c} index={i} />
           ))}
           </ol>
+          </div>
         </>
       )}
     </section>

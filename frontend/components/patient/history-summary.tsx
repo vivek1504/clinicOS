@@ -80,7 +80,7 @@ export function HistorySummary({ patientId, visits }: { patientId: string; visit
           <motion.div key="done" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={SPRING} className="border-t border-line px-5 py-4">
             <p className="max-w-3xl text-[15px] leading-[1.7] text-ink">{state.result.summary}</p>
             <p className="num mt-3 text-[11px] text-ink-3">
-              AI-generated · {state.result.model} · {(state.result.latencyMs / 1000).toFixed(1)}s
+              AI-generated · {state.result.model}
             </p>
           </motion.div>
         ) : state.status === "error" ? (
