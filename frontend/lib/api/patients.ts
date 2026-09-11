@@ -9,7 +9,7 @@ export function getPatientConsultations(id: string) {
   return apiFetch<ConsultationDto[]>(`/patients/${encodeURIComponent(id)}/consultations`);
 }
 
-export function createPatient(body: PatientInput & { allowDuplicate?: boolean }) {
+export function createPatient(body: PatientInput) {
   return apiFetch<PatientDto>("/patients", { method: "POST", body: JSON.stringify(body) });
 }
 

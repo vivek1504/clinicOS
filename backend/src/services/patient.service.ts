@@ -81,15 +81,13 @@ export class PatientService {
     return toDto(p);
   }
 
-  /** Refuses a second record with the same phone number unless the caller has seen the warning (`allowDuplicate`). */
-  async create(input: PatientInput & { allowDuplicate?: boolean }): Promise<PatientDtoType> {
+  /** One record per phone number. A match is refused and names the existing patient so the desk can open them. */
+  async create(input: PatientInput): Promise<PatientDtoType> {
     const phone = input.phone.trim();
-    if (!input.allowDuplicate) {
-      const candidates = await prisma.patient.findMany({ where: { phone: { contains: digits(phone).slice(-4) } }, select: { id: true, name: true, phone: true } });
-      const existing = candidates.find((c) => digits(c.phone) === digits(phone));
-      if (existing) {
-        throw new AppError("CONFLICT", `${existing.name} is already registered with this phone number`, { patientId: existing.id, name: existing.name });
-      }
+    const candidates = await prisma.patient.findMany({ where: { phone: { contains: digits(phone).slice(-4) } }, select: { id: true, name: true, phone: true } });
+    const existing = candidates.find((c) => digits(c.phone) === digits(phone));
+    if (existing) {
+      throw new AppError("CONFLICT", `${existing.name} is already registered with this phone number`, { patientId: existing.id, name: existing.name });
     }
     const p = await prisma.patient.create({
       data: {
