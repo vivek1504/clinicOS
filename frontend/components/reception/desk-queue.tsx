@@ -93,20 +93,20 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
               Today
             </Button>
           )}
-          <Button variant="secondary" size="sm" render={<SafeLink href={`/front-desk/book?date=${date}&walkIn=1`} />}>
+          <Button variant="secondary" size="sm" render={<SafeLink href={`/front-desk?date=${date}&walkIn=1`} />}>
             Walk-in
           </Button>
         </div>
       </div>
 
-      <div className="panel overflow-hidden">
+      <div className="panel">
         {rows.length === 0 ? (
           <EmptyState
             icon={<CalendarXIcon className="size-5" aria-hidden="true" />}
             title="No appointments on this day"
             body="Book the first one, or pick another date."
             action={
-              <Button size="sm" render={<SafeLink href={`/front-desk/book?date=${date}`} />}>
+              <Button size="sm" render={<SafeLink href={`/front-desk?date=${date}&book=1`} />}>
                 Book appointment
               </Button>
             }
@@ -119,7 +119,7 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
               const isBusy = busy === a.id;
               const canMove = a.status === "BOOKED" || a.status === "WAITING" || a.status === "NO_SHOW";
               return (
-                <li key={a.id} className={`grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3.5 last:border-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${a.status === "IN_CONSULTATION" ? "bg-accent-50/40" : ""}`}>
+                <li key={a.id} className={`grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3.5 first:rounded-t-lg last:rounded-b-lg last:border-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${a.status === "IN_CONSULTATION" ? "bg-accent-50/40" : ""}`}>
                   <div className={`num font-mono text-[13px] leading-tight ${quiet ? "text-ink-3" : "text-ink"}`}>
                     <span className="font-medium">{clock}</span>
                     <span className="ml-1 text-[11px] text-ink-3">{meridiem}</span>
@@ -173,7 +173,7 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
                               Mark absent
                             </MenuItem>
                           ) : null}
-                          <Button size="sm" variant="ghost" className="justify-start" render={<SafeLink href={`/front-desk/book?appointmentId=${encodeURIComponent(a.id)}&date=${date}`} />}>
+                          <Button size="sm" variant="ghost" className="justify-start" render={<SafeLink href={`/front-desk?date=${date}&appointmentId=${encodeURIComponent(a.id)}`} />}>
                             Reschedule
                           </Button>
                           <MenuItem disabled={isBusy} onClick={() => setConfirmCancel(a)}>

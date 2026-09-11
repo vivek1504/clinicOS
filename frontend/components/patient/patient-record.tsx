@@ -10,12 +10,31 @@ export function PatientRecord({
   patient,
   consultations,
   appointment,
+  layout = "doctor",
+  aside,
 }: {
   patient: PatientDto;
   /** null for the front desk: medications are read from consultation notes, which they do not see. */
   consultations: ConsultationDto[] | null;
   appointment: AppointmentDto | null;
+  /** "desk": phone and date of birth always visible, and `aside` (the appointments list) becomes the main column. */
+  layout?: "doctor" | "desk";
+  aside?: React.ReactNode;
 }) {
+  if (layout === "desk") {
+    return (
+      <div className="grid gap-5">
+        <IdentityCard patient={patient} appointment={appointment} expanded />
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
+          {aside}
+          <div className="grid content-start gap-5">
+            <AllergiesCard allergies={patient.allergies} />
+            <ConditionsCard conditions={patient.conditions} />
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <IdentityCard patient={patient} appointment={appointment} />
@@ -26,7 +45,8 @@ export function PatientRecord({
   );
 }
 
-function IdentityCard({ patient, appointment }: { patient: PatientDto; appointment: AppointmentDto | null }) {
+/** `expanded`: the front desk works from phone and date of birth, so they sit in the open instead of behind a toggle. */
+function IdentityCard({ patient, appointment, expanded = false }: { patient: PatientDto; appointment: AppointmentDto | null; expanded?: boolean }) {
   const initials = patient.name
     .split(" ")
     .map((w) => w[0])
@@ -62,6 +82,22 @@ function IdentityCard({ patient, appointment }: { patient: PatientDto; appointme
         </div>
       </div>
 
+      {expanded ? (
+        <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4 sm:grid-cols-4">
+          {rows.map((r) => (
+            <div key={r.label} className="min-w-0">
+              <dt className="eyebrow">{r.label}</dt>
+              <dd className="mt-1 truncate text-[14px] font-medium text-ink">{r.value}</dd>
+            </div>
+          ))}
+          <div className="min-w-0">
+            <dt className="eyebrow">Patient ID</dt>
+            <dd className="mt-1">
+              <CopyId value={patient.id} />
+            </dd>
+          </div>
+        </dl>
+      ) : (
       <details className="group mt-5">
         <summary className="cursor-pointer list-none text-[13px] font-medium text-ink-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
           <span className="group-open:hidden">Demographics</span>
@@ -82,6 +118,7 @@ function IdentityCard({ patient, appointment }: { patient: PatientDto; appointme
           <CopyId value={patient.id} />
         </div>
       </details>
+      )}
     </Card>
   );
 }

@@ -1,12 +1,14 @@
 import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, ArrowRightIcon, CalendarPlusIcon, CheckIcon, PencilIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from "lucide-react";
+import { BookForPatient } from "@/components/reception/book-for-patient";
+import { EditPatient } from "@/components/reception/edit-patient";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SafeLink } from "@/components/shared/safe-link";
 import { PatientRecord, PatientRecordSkeleton } from "@/components/patient/patient-record";
 import { ClinicalTimeline, ClinicalTimelineSkeleton } from "@/components/patient/clinical-timeline";
-import { getAppointments, getPatientAppointments } from "@/lib/api/appointments";
+import { getAppointments, getDoctors, getPatientAppointments } from "@/lib/api/appointments";
 import { Card } from "@/components/shared/card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate, formatTime, pluralize } from "@/lib/format";
@@ -20,6 +22,7 @@ export const dynamic = "force-dynamic";
 /** Header action, record and timeline all read these; one request each per render. */
 const loadConsultations = cache((id: string) => getPatientConsultations(id));
 const loadAppointments = cache(() => getAppointments());
+const loadPatient = cache((id: string) => getPatient(id));
 
 export default async function PatientPage({
   params,
@@ -49,16 +52,9 @@ export default async function PatientPage({
             <p className="mt-1.5 text-[14px] text-ink-3">{frontDesk ? "Details and allergies. Clinical notes are visible to doctors only." : "Clinical context and consultation history."}</p>
           </div>
           {frontDesk ? (
-            <div className="flex flex-wrap gap-2">
-              <Button size="lg" variant="secondary" render={<SafeLink href={`/front-desk/patients/${id}/edit`} />}>
-                <PencilIcon />
-                Edit details
-              </Button>
-              <Button size="lg" render={<SafeLink href={`/front-desk/book?patientId=${encodeURIComponent(id)}`} />}>
-                <CalendarPlusIcon />
-                Book appointment
-              </Button>
-            </div>
+            <Suspense fallback={<Skeleton className="h-10 w-72" />}>
+              <DeskActions id={id} />
+            </Suspense>
           ) : (
             <Suspense fallback={<Skeleton className="h-11 w-44" />}>
               <ConsultAction id={id} appointmentId={appointmentId} />
@@ -71,11 +67,7 @@ export default async function PatientPage({
         <Record id={id} appointmentId={appointmentId} withNotes={!frontDesk} />
       </Suspense>
 
-      {frontDesk ? (
-        <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-          <Appointments id={id} />
-        </Suspense>
-      ) : (
+      {frontDesk ? null : (
         <Suspense fallback={<ClinicalTimelineSkeleton />}>
           <History id={id} />
         </Suspense>
@@ -104,6 +96,16 @@ async function ConsultAction({ id, appointmentId }: { id: string; appointmentId?
       </div>
     );
   }
+  if (visit.appointment && (visit.appointment.status === "BOOKED" || visit.appointment.status === "NO_SHOW")) {
+    return (
+      <div className="flex flex-col items-end gap-1.5">
+        <Button size="lg" disabled>
+          Start consultation
+        </Button>
+        <p className="text-[12px] text-ink-3">{visit.appointment.status === "BOOKED" ? "Not checked in yet; the front desk checks patients in" : "Marked absent; the front desk marks arrival"}</p>
+      </div>
+    );
+  }
   if (visit.blockedBy) {
     const who = visit.blockedBy.patient.name;
     return (
@@ -128,16 +130,49 @@ async function ConsultAction({ id, appointmentId }: { id: string; appointmentId?
   );
 }
 
+/** Front desk only: edit the patient or book for them, both as modals over the record. */
+async function DeskActions({ id }: { id: string }) {
+  let patient;
+  try {
+    patient = await loadPatient(id);
+  } catch (err) {
+    if (isApiError(err, "NOT_FOUND")) notFound();
+    throw err;
+  }
+  const doctors = await getDoctors();
+  return (
+    <div className="flex flex-wrap gap-2">
+      <EditPatient patient={patient} />
+      <BookForPatient patient={patient} doctors={doctors} />
+    </div>
+  );
+}
+
 /** `withNotes` false for the front desk: the consultation list is a doctor-only endpoint. */
 async function Record({ id, appointmentId, withNotes }: { id: string; appointmentId?: string; withNotes: boolean }) {
   let patient;
   try {
-    patient = await getPatient(id);
+    patient = await loadPatient(id);
   } catch (err) {
     if (isApiError(err, "NOT_FOUND")) notFound();
     throw err;
   }
   const [visit, consultations] = await Promise.all([loadVisit(id, appointmentId), withNotes ? loadConsultations(id) : null]);
+  if (!withNotes) {
+    return (
+      <PatientRecord
+        patient={patient}
+        consultations={null}
+        appointment={visit.appointment}
+        layout="desk"
+        aside={
+          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+            <Appointments id={id} />
+          </Suspense>
+        }
+      />
+    );
+  }
   return <PatientRecord patient={patient} consultations={consultations} appointment={visit.appointment} />;
 }
 
