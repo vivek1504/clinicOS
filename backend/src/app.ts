@@ -10,7 +10,7 @@ import { consultationRoutes } from "./routes/consultations";
 import { aiRoutes } from "./routes/ai";
 import { authRoutes, requireRole, sessionPlugin } from "./auth";
 import { staffRoutes } from "./routes/staff";
-import { GeminiProvider } from "./ai/gemini.provider";
+import { OpenRouterProvider } from "./ai/openrouter.provider";
 import { FakeAiProvider } from "./ai/fake.provider";
 
 export const buildApp = (deps: { ai: AiProvider }) =>
@@ -77,7 +77,7 @@ export const buildApp = (deps: { ai: AiProvider }) =>
 const defaultAi: AiProvider =
   env.AI_PROVIDER === "fake"
     ? new FakeAiProvider()
-    : new GeminiProvider();
+    : new OpenRouterProvider();
 
 export const app = buildApp({ ai: defaultAi });
 export default app;
