@@ -11,39 +11,39 @@ export function thinkingConfigFor(model: string) {
   return { thinkingBudget: 0 };
 }
 
+/**
+ * Upstream errors are logged in full here and never forwarded: the provider's JSON is not something a
+ * doctor should read, and the frontend already has copy for every code.
+ */
 export function mapGeminiError(e: unknown): Error {
   if (e instanceof AiProviderError) return e;
 
   if (e instanceof Error) {
     const msg = e.message.toLowerCase();
     if (e.name === "AbortError" || msg.includes("abort") || msg.includes("timeout")) {
-      return new AiProviderError("AI_TIMEOUT", e.message);
+      return new AiProviderError("AI_TIMEOUT", "The AI did not answer in time");
     }
   }
 
   if (e && typeof e === "object" && "status" in e) {
     const status = (e as { status: number }).status;
-    const msg = (e as { message?: string }).message || "Gemini API error";
+    console.error("[Gemini API Error]", status, (e as { message?: string }).message);
     if (status === 408 || status === 504) {
-      return new AiProviderError("AI_TIMEOUT", msg);
+      return new AiProviderError("AI_TIMEOUT", "The AI did not answer in time");
     }
     if (status === 429) {
-      return new AiProviderError("AI_RATE_LIMITED", msg);
+      return new AiProviderError("AI_RATE_LIMITED", "The AI is busy right now");
     }
     if (status === 400 || status === 401 || status === 403 || status === 404) {
-      console.error("[Gemini API Error]", e);
-      return new AiProviderError("AI_UNAVAILABLE", msg);
+      return new AiProviderError("AI_UNAVAILABLE", "AI assistance is not available");
     }
     if (status >= 500) {
-      return new AiProviderError("AI_UNAVAILABLE", msg);
+      return new AiProviderError("AI_UNAVAILABLE", "AI assistance is not available");
     }
   }
 
   console.error("[Gemini API Unexpected Error]", e);
-  return new AiProviderError(
-    "AI_UNAVAILABLE",
-    e instanceof Error ? e.message : "AI provider unavailable"
-  );
+  return new AiProviderError("AI_UNAVAILABLE", "AI assistance is not available");
 }
 
 export class GeminiProvider implements AiProvider {
