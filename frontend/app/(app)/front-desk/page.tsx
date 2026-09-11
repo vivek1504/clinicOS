@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { CalendarPlusIcon, UserPlusIcon } from "lucide-react";
+import { UserPlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeLink } from "@/components/shared/safe-link";
 import { PatientDirectory } from "@/components/dashboard/patient-directory";
+import { DeskActions } from "@/components/reception/desk-actions";
 import { DeskQueue } from "@/components/reception/desk-queue";
-import { getAppointments } from "@/lib/api/appointments";
+import { getAppointments, getDoctors } from "@/lib/api/appointments";
 import { getPatients } from "@/lib/api/patients";
 import { formatTime, pluralize } from "@/lib/format";
 import { requireRole } from "@/lib/role";
@@ -14,14 +15,18 @@ export const metadata: Metadata = { title: "Front desk" };
 
 const HEADLINE_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
-export default async function FrontDeskPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+export default async function FrontDeskPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string; register?: string; book?: string; walkIn?: string; patientId?: string; appointmentId?: string }>;
+}) {
   const me = await requireRole("RECEPTIONIST", "/");
-  const { date } = await searchParams;
+  const { date, register, book, walkIn, patientId, appointmentId } = await searchParams;
   const today = new Intl.DateTimeFormat("en-CA").format(new Date());
   const selected = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
   const isToday = selected === today;
 
-  const [appointments, patients] = await Promise.all([getAppointments(isToday ? undefined : selected), getPatients()]);
+  const [appointments, patients, doctors] = await Promise.all([getAppointments(isToday ? undefined : selected), getPatients(), getDoctors()]);
   const rows = appointments.map((a) => ({ ...a, time: formatTime(a.scheduledAt) })).sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   const count = (s: string) => rows.filter((a) => a.status === s).length;
   const live = rows.filter((a) => a.status !== "CANCELLED").length;
@@ -41,16 +46,13 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
             {count("COMPLETED")} seen
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="lg" variant="secondary" render={<SafeLink href="/front-desk/patients/new" />}>
-            <UserPlusIcon />
-            Register patient
-          </Button>
-          <Button size="lg" render={<SafeLink href={`/front-desk/book?date=${selected}`} />}>
-            <CalendarPlusIcon />
-            Book appointment
-          </Button>
-        </div>
+        <DeskActions
+          key={`${register ?? ""}-${book ?? ""}-${walkIn ?? ""}-${patientId ?? ""}-${appointmentId ?? ""}`}
+          patients={patients}
+          doctors={doctors}
+          date={selected}
+          initial={{ register: register === "1", book: book === "1", walkIn: walkIn === "1", patientId, reschedule: appointmentId ? (appointments.find((a) => a.id === appointmentId) ?? null) : null }}
+        />
       </header>
 
       <DeskQueue rows={rows} date={selected} isToday={isToday} />
@@ -58,7 +60,7 @@ export default async function FrontDeskPage({ searchParams }: { searchParams: Pr
       <PatientDirectory
         patients={[...patients].sort((a, b) => a.name.localeCompare(b.name))}
         action={
-          <Button variant="secondary" size="sm" render={<SafeLink href="/front-desk/patients/new" />}>
+          <Button variant="secondary" size="sm" render={<SafeLink href={`/front-desk?date=${selected}&register=1`} />}>
             <UserPlusIcon />
             Register
           </Button>
