@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// The clinic's clock, not the host's. Every "today", slot check and day range uses local time, and Vercel runs in UTC,
+// so without this the schedule rolls back a day every evening. Hosts often set TZ=UTC themselves, hence our own variable.
+process.env.TZ = process.env.CLINIC_TZ || "Asia/Kolkata";
+
 const rawDbUrl =
   process.env.DATABASE_URL &&
   process.env.DATABASE_URL.length > 0 &&
@@ -15,6 +19,8 @@ const EnvSchema = z.object({
   AI_PROVIDER: z.enum(["openrouter", "fake"]).catch("openrouter"),
   AI_MODEL: z.string().default("openai/gpt-4o-mini"),
   AI_TIMEOUT_MS: z.coerce.number().default(20000),
+  /** Optional: enables voice dictation in the consultation. Blank hides the feature. */
+  ASSEMBLYAI_API_KEY: z.string().optional().default(""),
   PORT: z.coerce.number().default(3001),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   NODE_ENV: z.string().default("development"),

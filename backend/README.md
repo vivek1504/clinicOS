@@ -69,6 +69,8 @@ bun run typecheck
 | `AI_PROVIDER` | Active AI provider (`openrouter` or `fake`) | `openrouter` |
 | `AI_MODEL` | Any OpenRouter model ID, e.g. `openai/gpt-4o-mini`, `google/gemini-2.5-flash`, `anthropic/claude-sonnet-5` | `openai/gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Upstream AI call timeout in ms | `20000` |
+| `ASSEMBLYAI_API_KEY` | Enables voice dictation in the consultation (optional) | `""` |
+| `CLINIC_TZ` | Clinic timezone; every "today" and slot check uses it (the process `TZ` is set from it at startup) | `Asia/Kolkata` |
 | `PORT` | HTTP server port | `3001` |
 | `CORS_ORIGIN` | Allowed CORS origin (Frontend) | `http://localhost:3000` |
 
@@ -81,6 +83,10 @@ bun run typecheck
 - Set `AI_PROVIDER=fake` in `.env` to enable full end-to-end clinical note structuring and AI draft demos without requiring an external API key.
 
 ---
+
+## Voice dictation
+
+`GET /ai/voice` → `{ enabled }` says whether `ASSEMBLYAI_API_KEY` is set; the consultation only shows **Record** when it is. `POST /ai/transcription-token` → `{ token, expiresInSeconds }` mints a 60-second AssemblyAI streaming token. The browser opens the WebSocket to AssemblyAI itself and streams 16 kHz PCM, so audio never passes through this server and nothing about the recording is stored. Without a key the token route answers `503 AI_UNAVAILABLE`; upstream failures map to `AI_RATE_LIMITED` or `AI_UNAVAILABLE` with fixed messages, and the upstream body is only logged.
 
 ## AI patient history summary
 

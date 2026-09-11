@@ -131,6 +131,7 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 - **Draft safety**: Regenerating keeps the previous draft one click away. Saving with an empty structured note asks first, so a notes-only visit is a choice, not an accident. A same-tab reload restores the draft without a prompt.
 - **Idempotent Consultations**: The consultation editor mints a unique `clientRequestId` per session. Network retries, double-clicks, or crash restores resolve idempotently to the same database record.
 - **Resilient Unsaved-Changes Guard**: In-flight consultation notes mirror continuously to `sessionStorage`. Route changes trigger custom modal confirmations, and page unloads trigger browser guards. If a session expires or a tab crashes, drafting progress can be restored with a single click.
+- **Voice dictation**: A **Record** button in the notes panel streams the doctor's speech to AssemblyAI straight from the browser and drops each finished sentence into the notes; the sentence still being recognised shows beneath the notes so it never overwrites typing. The backend only mints a short-lived token. Hidden entirely when no key is configured.
 - **Longitudinal History Summarizer**: Synthesizes past visits into concise 2-4 sentence clinical summaries (`POST /ai/patient-summary`) strictly grounded in previously saved notes.
 - **Cookie Session Authentication**: Lightweight, secure session management powered by `Bun.password` (Argon2id) and `httpOnly` lax cookies, completely free of external auth dependencies.
 - **Single-Origin Proxy Architecture**: Next.js App Router proxies `/api/*` to the backend service. Upstream API keys remain protected on the server, avoiding cross-origin overhead during local development.
@@ -141,7 +142,7 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 
 | Screen | Route | Key Functionality |
 |---|---|---|
-| **Doctor dashboard** | `/` | Today's queue with status filters (Booked, Waiting, In consultation, Completed, plus No show and Cancelled when present). The next checked-in patient's row is the only enabled Start; rows behind it are disabled with the reason. Booked and absent rows say the front desk marks arrival. Up-next card with allergies and conditions. |
+| **Doctor dashboard** | `/` | Today's queue with status filters (Booked, Waiting, In consultation, Completed, plus Absent and Cancelled when present). The next checked-in patient's row is the only enabled Start; rows behind it are disabled with the reason. Booked and absent rows say the front desk marks arrival. Up-next card with allergies and conditions. |
 | **Patient record** | `/patients/[id]` | Identity, allergies, conditions and medications mentioned in notes, then the clinical timeline with side-by-side AI draft comparison. The front desk sees identity, allergies, conditions and the patient's appointments instead; clinical notes are never sent to them. |
 | **Consultation workspace** | `/patients/[id]/consultation` | Three columns: patient context, doctor notes, editable draft. The page takes the room on open and releases it on leave. Redirects to the record once the appointment is completed. |
 | **Front desk** | `/front-desk` | The day's schedule with per-row Check in / Arrived / Restore (arrival is only ever recorded here or by a walk-in) and a More menu for Mark absent, Reschedule and Cancel. Register and Book actions, walk-in shortcut, patient directory. |
@@ -233,6 +234,8 @@ The frontend will be running on `http://localhost:3000`.
 | `AI_PROVIDER` | Active AI provider (`openrouter` or `fake`) | `openrouter` |
 | `AI_MODEL` | OpenRouter model identifier (any chat model, e.g. `openai/gpt-4o-mini`) | `openai/gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Upstream AI request timeout in milliseconds | `20000` |
+| `ASSEMBLYAI_API_KEY` | AssemblyAI key for voice dictation (optional; blank hides Record) | `""` |
+| `CLINIC_TZ` | Clinic timezone for "today", day ranges and slots; the process `TZ` is set from it at startup | `Asia/Kolkata` |
 | `PORT` | API server port | `3001` |
 | `CORS_ORIGIN` | Allowed cross-origin source | `http://localhost:3000` |
 
@@ -311,6 +314,8 @@ Every endpoint except `/health` and `/auth/*` needs a session cookie. The **Who*
 | `POST` | `/consultations` | doctor | Save the note with an idempotency key; completes the linked appointment |
 | `POST` | `/ai/structure-consultation` | doctor | Raw notes → structured JSON draft |
 | `POST` | `/ai/patient-summary` | doctor | Short history summary, never stored |
+| `GET` | `/ai/voice` | doctor | Whether voice dictation is configured |
+| `POST` | `/ai/transcription-token` | doctor | Short-lived AssemblyAI streaming token |
 | `GET` | `/health` | anyone | Service health probe |
 
 Conflict codes worth handling in a client: `ALREADY_IN_CONSULTATION` (someone holds the room; details name them), `QUEUE_ORDER` (an earlier check-in is unfinished), `CONFLICT` (slot taken, duplicate patient, illegal transition).
@@ -360,8 +365,8 @@ Production runs on Vercel as two projects from the same repository, connected to
 
 | Project | Root Directory | Notes |
 |---|---|---|
-| `frontend` | `frontend` | Next.js. Needs `API_URL` pointing at the backend's production URL. |
-| `backend` | `backend` | Bun runtime (`vercel.json` pins `bunVersion`). Needs `DATABASE_URL` (pooled), `DIRECT_URL` (direct, for migrations), `OPENROUTER_API_KEY`, `AI_PROVIDER`, `AI_MODEL`, `CORS_ORIGIN`. |
+| `frontend` | `frontend` | Next.js. Needs `API_URL` pointing at the backend's production URL. `instrumentation.ts` sets the process timezone from `CLINIC_TZ` (default Asia/Kolkata) so "today" is not the UTC day. |
+| `backend` | `backend` | Bun runtime (`vercel.json` pins `bunVersion`). Needs `DATABASE_URL` (pooled), `DIRECT_URL` (direct, for migrations), `OPENROUTER_API_KEY`, `AI_PROVIDER`, `AI_MODEL`, `CORS_ORIGIN`, and `ASSEMBLYAI_API_KEY` if dictation should be on. `CLINIC_TZ` is optional and defaults to Asia/Kolkata. |
 
 The backend's build command runs `prisma migrate deploy` over `DIRECT_URL` and then `prisma/ensure-staff.ts`, so every deploy applies pending migrations and guarantees the two demo accounts exist. It never touches patients, appointments or consultations. If a migration fails, the build fails and the previous deployment stays live.
 
