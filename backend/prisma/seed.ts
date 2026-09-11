@@ -26,18 +26,28 @@ async function seed() {
   };
 
   await prisma.$transaction(async (tx) => {
+    // 0. Start clean. Clinical data goes; the doctor and any live sign-in sessions stay.
+    await tx.$executeRawUnsafe(`TRUNCATE TABLE "Consultation", "Appointment", "Patient" CASCADE`);
+
     // 1. Doctor
     // Demo sign-in: mehta@clinicos.local / clinicos
     const passwordHash = await Bun.password.hash("clinicos");
-    await tx.doctor.upsert({
+    await tx.user.upsert({
       where: { id: "doc_default" },
-      update: { name: "Dr. Mehta", email: "mehta@clinicos.local", passwordHash },
+      update: { name: "Dr. Mehta", email: "mehta@clinicos.local", passwordHash, role: "DOCTOR" },
       create: {
         id: "doc_default",
         name: "Dr. Mehta",
         email: "mehta@clinicos.local",
         passwordHash,
+        role: "DOCTOR",
       },
+    });
+    // Front desk sign-in: reception@clinicos.local / clinicos
+    await tx.user.upsert({
+      where: { id: "rec_default" },
+      update: { name: "Priya Nair", email: "reception@clinicos.local", passwordHash, role: "RECEPTIONIST" },
+      create: { id: "rec_default", name: "Priya Nair", email: "reception@clinicos.local", passwordHash, role: "RECEPTIONIST" },
     });
 
     // 2. Patients
@@ -138,7 +148,7 @@ async function seed() {
         doctorId: "doc_default",
         scheduledAt: today1100,
         reason: "Follow-up on blood pressure medications and joint pain",
-        status: "WAITING" as const,
+        status: "BOOKED" as const, // on the schedule, not yet checked in
       },
       {
         id: "appt_tomorrow_1",
@@ -146,7 +156,7 @@ async function seed() {
         doctorId: "doc_default",
         scheduledAt: tomorrow1000,
         reason: "Seasonal allergy consultation and inhaler review",
-        status: "WAITING" as const,
+        status: "BOOKED" as const,
       },
     ];
 

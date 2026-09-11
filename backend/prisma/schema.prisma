@@ -12,17 +12,27 @@ enum Gender {
   OTHER
 }
 
+enum Role {
+  DOCTOR
+  RECEPTIONIST
+}
+
 enum AppointmentStatus {
+  BOOKED
   WAITING
   IN_CONSULTATION
   COMPLETED
+  NO_SHOW
+  CANCELLED
 }
 
-model Doctor {
+/// Every staff member who can sign in; `role` says who is who.
+model User {
   id            String         @id @default(cuid())
   name          String
   email         String         @unique
   passwordHash  String?
+  role          Role           @default(DOCTOR)
   appointments  Appointment[]
   consultations Consultation[]
   sessions      Session[]
@@ -30,12 +40,12 @@ model Doctor {
 
 model Session {
   id        String   @id
-  doctorId  String
+  userId    String
   createdAt DateTime @default(now())
   expiresAt DateTime
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([doctorId])
+  @@index([userId])
 }
 
 model Patient {
@@ -60,11 +70,14 @@ model Appointment {
   reason       String
   status       AppointmentStatus @default(WAITING)
   patient      Patient           @relation(fields: [patientId], references: [id])
-  doctor       Doctor            @relation(fields: [doctorId], references: [id])
+  doctor       User              @relation(fields: [doctorId], references: [id])
   consultation Consultation?
 
   @@index([scheduledAt])
   @@index([doctorId, scheduledAt])
+  // Partial unique indexes Prisma cannot express, defined in migrations:
+  //   Appointment_one_active_per_doctor (doctorId WHERE status = IN_CONSULTATION), 20260911120000
+  //   Appointment_doctor_slot (doctorId, scheduledAt WHERE status <> CANCELLED), 20260911140100
 }
 
 model Consultation {
@@ -82,7 +95,7 @@ model Consultation {
   wasAiUsed       Boolean      @default(false)
   wasAiEdited     Boolean      @default(false)
   patient         Patient      @relation(fields: [patientId], references: [id])
-  doctor          Doctor       @relation(fields: [doctorId], references: [id])
+  doctor          User         @relation(fields: [doctorId], references: [id])
   appointment     Appointment? @relation(fields: [appointmentId], references: [id])
 
   @@index([patientId, createdAt(sort: Desc)])
