@@ -35,23 +35,23 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   return (
     <div className="flex flex-col gap-10">
       <header>
-        <h1 className="display text-[40px] text-ink sm:text-[46px]">
+        <h1 className="display text-[32px] text-ink sm:text-[36px]">
           {greeting(now.getHours())}, <span className="italic">{doctor.name}</span>
         </h1>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-ink-3">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-ink-3">
           <p suppressHydrationWarning>{HEADLINE_DATE.format(isToday ? now : new Date(`${selected}T12:00:00`))}</p>
           <span aria-hidden="true" className="hidden text-ink-3 sm:inline">—</span>
-          <Suspense key={`ov-${selected}`} fallback={<ClinicOverview loading />}>
+          <Suspense fallback={<ClinicOverview loading />}>
             <Overview date={selected} isToday={isToday} />
           </Suspense>
         </div>
       </header>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <Suspense key={`sc-${selected}`} fallback={<ScheduleSkeleton />}>
+        <Suspense fallback={<ScheduleSkeleton />}>
           <Timeline date={selected} isToday={isToday} />
         </Suspense>
-        <Suspense key={`rail-${selected}`} fallback={<DayRailSkeleton />}>
+        <Suspense fallback={<DayRailSkeleton />}>
           <Rail date={selected} isToday={isToday} />
         </Suspense>
       </div>

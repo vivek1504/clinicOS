@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { CalendarIcon, CalendarXIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, SearchXIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -45,7 +45,9 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
   const remaining = rows.filter((r) => r.status === "BOOKED" || r.status === "WAITING" || r.status === "IN_CONSULTATION").length;
   // The clinician's next action: the patient in the room, otherwise the earliest waiting one.
   const current = rows.find((r) => r.status === "IN_CONSULTATION") ?? rows.find((r) => r.status === "WAITING") ?? null;
-  const goTo = (d: string) => router.replace(d === new Intl.DateTimeFormat("en-CA").format(new Date()) ? "/" : `/?date=${d}`);
+  // A day change is a transition: the list stays put and dims until the new day arrives, then fades in.
+  const [pending, startNav] = useTransition();
+  const goTo = (d: string) => startNav(() => router.replace(d === new Intl.DateTimeFormat("en-CA").format(new Date()) ? "/" : `/?date=${d}`));
   const [dateOpen, setDateOpen] = useState(false);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -117,7 +119,8 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
         </div>
       </div>
 
-      <div className="panel flex flex-col overflow-hidden">
+      {/* Minimum height so a one-appointment day does not pull the directory up the page. */}
+      <div aria-busy={pending || undefined} className={`panel flex min-h-[22rem] flex-col overflow-hidden transition-opacity duration-200 ${pending ? "opacity-60" : ""}`}>
         <div role="group" aria-label="Filter by status" className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2">
           {FILTERS.map((f) => {
             const n = f === "ALL" ? rows.length : rows.filter((r) => r.status === f).length;
@@ -175,7 +178,7 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
             }
           />
         ) : (
-          <ol className="relative" aria-label="Appointments">
+          <ol key={date} className="relative animate-in fade-in duration-300" aria-label="Appointments">
             <span aria-hidden="true" className="absolute top-0 bottom-0 left-[9rem] hidden w-px bg-line sm:block" />
             {visible.map((a, i) => (
               <AppointmentRow

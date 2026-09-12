@@ -73,8 +73,8 @@ export function AppointmentRow({
       </div>
 
       <div className="relative z-10 flex items-center justify-end gap-2">
-        {/* Waiting is the default and says nothing; done and booked are routine and read as text; the rest earn a pill. */}
-        {a.status === "WAITING" ? null : a.status === "COMPLETED" || a.status === "BOOKED" ? (
+        {/* Done and booked are routine and read as text; waiting and in-consultation need the doctor's eye, so they get the pill. */}
+        {a.status === "COMPLETED" || a.status === "BOOKED" ? (
           <span className="hidden text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase sm:inline">{STATUS_LABEL[a.status]}</span>
         ) : (
           <span className="hidden sm:inline-flex">
@@ -89,12 +89,12 @@ export function AppointmentRow({
             <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-0.5" />
           </Button>
         ) : blockedBy ? (
-          <Button variant="secondary" size="sm" className="hidden sm:inline-flex" disabled title={`${blockedBy} first`}>
-            Start consultation
-          </Button>
+          <span className="hidden text-[12px] text-ink-3 sm:inline" title={`${blockedBy} first`}>
+            After {blockedBy.split(" ")[0]}
+          </span>
         ) : (
-          <Button variant={current ? "primary" : "secondary"} size="sm" className="hidden sm:inline-flex" render={<SafeLink href={consultHref} />}>
-            {inRoom ? "Continue" : "Start consultation"}
+          <Button variant="ghost" size="sm" className="hidden text-ink-3 group-hover:text-ink sm:inline-flex" render={<SafeLink href={consultHref} />}>
+            {inRoom ? "Continue" : "Start"}
             <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-0.5" />
           </Button>
         )}

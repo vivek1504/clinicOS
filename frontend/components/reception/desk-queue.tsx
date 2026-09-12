@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { SPRING_QUICK } from "@/components/shared/reveal";
@@ -54,7 +54,8 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
   const manyDoctors = new Set(rows.map((r) => r.doctorId)).size > 1;
   const toCheckIn = rows.filter((r) => r.status === "BOOKED").length;
 
-  const goTo = (d: string) => router.replace(`/front-desk?date=${d}`);
+  const [pending, startNav] = useTransition();
+  const goTo = (d: string) => startNav(() => router.replace(`/front-desk?date=${d}`));
   const [dateOpen, setDateOpen] = useState(false);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -121,7 +122,7 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
         </div>
       </div>
 
-      <div className="panel">
+      <div aria-busy={pending || undefined} className={`panel min-h-[22rem] transition-opacity duration-200 ${pending ? "opacity-60" : ""}`}>
         {rows.length === 0 ? (
           <EmptyState
             icon={<HugeiconsIcon icon={CalendarRemove01Icon} className="size-5" aria-hidden="true" />}
@@ -134,7 +135,7 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
             }
           />
         ) : (
-          <ol aria-label="Appointments">
+          <ol key={date} className="animate-in fade-in duration-300" aria-label="Appointments">
             {/* Rows keep their place on refresh: a new booking fades in, a moved one slides to its slot, a rescheduled one fades out. */}
             <AnimatePresence initial={false}>
             {rows.map((a) => {

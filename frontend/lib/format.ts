@@ -53,3 +53,12 @@ export function parseDob(text: string): string {
   const x = parse(`${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`, "dd/MM/yyyy", new Date());
   return isValid(x) ? format(x, "yyyy-MM-dd") : "";
 }
+
+/** "today", "3 days ago", "2 months ago", "1 year ago". Coarse on purpose: a doctor wants the gap, not the date. */
+export function formatAgo(iso: string, now = new Date()): string {
+  const days = Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "today";
+  if (days < 30) return `${pluralize(days, "day")} ago`;
+  if (days < 365) return `${pluralize(Math.floor(days / 30), "month")} ago`;
+  return `${pluralize(Math.floor(days / 365), "year")} ago`;
+}

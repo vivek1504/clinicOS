@@ -3,17 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/shared/card";
 import { SafeLink } from "@/components/shared/safe-link";
-import { getPatient } from "@/lib/api/patients";
+import { getPatient, getPatientConsultations } from "@/lib/api/patients";
 import type { AppointmentDto } from "@/lib/api/types";
-import { formatTime } from "@/lib/format";
+import { formatAgo, formatTime, pluralize } from "@/lib/format";
 
-/** Right rail: who is next (with the context a doctor wants before calling them in) and how the day is going. */
+/** Right rail: who is next, with the context a doctor wants before calling them in. */
 export async function DayRail({ appointments, isToday }: { appointments: AppointmentDto[]; isToday: boolean }) {
   const sorted = [...appointments].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   const next = sorted.find((a) => a.status === "IN_CONSULTATION") ?? sorted.find((a) => a.status === "WAITING") ?? null;
-  const patient = next ? await getPatient(next.patientId).catch(() => null) : null;
-  const done = sorted.filter((a) => a.status === "COMPLETED").length;
-  const upcoming = sorted.filter((a) => (a.status === "WAITING" || a.status === "BOOKED") && a.id !== next?.id);
+  // The card is the doctor's pre-visit read, so it also carries how often and how recently this patient has been seen.
+  const [patient, visits] = next ? await Promise.all([getPatient(next.patientId).catch(() => null), getPatientConsultations(next.patientId).catch(() => [])]) : [null, []];
+  const last = visits[0] ?? null;
   const notArrived = sorted.filter((a) => a.status === "BOOKED").length;
 
   const inRoom = next?.status === "IN_CONSULTATION";
@@ -53,10 +53,24 @@ export async function DayRail({ appointments, isToday }: { appointments: Appoint
                     <dt className="eyebrow">Age</dt>
                     <dd className="mt-1 font-medium text-ink">{patient.age} years</dd>
                   </div>
+                  <div>
+                    <dt className="eyebrow">Last visit</dt>
+                    <dd className={`mt-1 font-medium ${last ? "text-ink" : "text-ink-3"}`}>
+                      {last ? (
+                        <>
+                          {formatAgo(last.createdAt)}
+                          {last.chiefComplaint ? <span className="font-normal text-ink-3"> · {last.chiefComplaint}</span> : null}
+                          <span className="font-normal text-ink-3"> · {pluralize(visits.length, "visit")} on record</span>
+                        </>
+                      ) : (
+                        "First visit"
+                      )}
+                    </dd>
+                  </div>
                 </dl>
               ) : null}
               <div className="mt-5 flex gap-2">
-                <Button variant="secondary" className="flex-1" render={<SafeLink href={`/patients/${next.patientId}/consultation?appointmentId=${encodeURIComponent(next.id)}`} />}>
+                <Button className="flex-1" render={<SafeLink href={`/patients/${next.patientId}/consultation?appointmentId=${encodeURIComponent(next.id)}`} />}>
                   {next.status === "IN_CONSULTATION" ? "Continue consultation" : "Start consultation"}
                   <ArrowRightIcon />
                 </Button>
@@ -85,32 +99,6 @@ export async function DayRail({ appointments, isToday }: { appointments: Appoint
         </Card>
       </div>
 
-      {sorted.length > 0 ? (
-        <Card title="Day progress" aside={<span className="num">{done} of {sorted.length} seen</span>}>
-          <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={`${done} of ${sorted.length} appointments completed`}>
-            {sorted.map((a) => (
-              <span
-                key={a.id}
-                className={`flex-1 transition-colors duration-300 ${a.status === "COMPLETED" ? "bg-accent-600" : a.status === "IN_CONSULTATION" ? "bg-accent-300" : a.status === "NO_SHOW" || a.status === "CANCELLED" ? "bg-line" : "bg-line-strong"}`}
-              />
-            ))}
-          </div>
-          {upcoming.length > 0 ? (
-            <ul className="mt-4 divide-y divide-line text-[13px]">
-              {upcoming.slice(0, 4).map((a) => (
-                <li key={a.id} className="flex items-center gap-3 py-2">
-                  <span className="num w-16 shrink-0 font-mono text-[12px] text-ink-3">{formatTime(a.scheduledAt)}</span>
-                  <span className="min-w-0 flex-1 truncate text-ink">{a.patient.name}</span>
-                  {a.status === "BOOKED" ? <span className="shrink-0 text-[11px] text-ink-3">not arrived</span> : null}
-                </li>
-              ))}
-              {upcoming.length > 4 ? <li className="py-2 text-[12px] text-ink-3">+{upcoming.length - 4} more waiting</li> : null}
-            </ul>
-          ) : (
-            <p className="mt-4 text-[13px] text-ink-3">{next ? "No one else is waiting after this patient." : "Nothing left in the queue."}</p>
-          )}
-        </Card>
-      ) : null}
     </div>
   );
 }
@@ -131,11 +119,6 @@ export function DayRailSkeleton() {
           <Skeleton className="h-4 w-24" />
         </div>
         <Skeleton className="mt-5 h-9 w-full" />
-      </div>
-      <div className="panel p-5">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="mt-4 h-1.5 w-full rounded-full" />
-        <Skeleton className="mt-4 h-4 w-48" />
       </div>
     </div>
   );
