@@ -48,7 +48,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/auth/")) {
       // Full navigation on purpose: a stale session should reset all client state, not just change route.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign(`/sign-in?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      window.location.assign(`/sign-in?expired=1&next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
     }
     throw new ApiError(
       body?.error?.code ?? `HTTP_${res.status}`,

@@ -22,9 +22,12 @@ export class AuthService {
       throw new AppError("UNAUTHORIZED", "Incorrect email or password");
     }
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-    const session = await prisma.session.create({
-      data: { id: crypto.randomUUID(), userId: doctor.id, expiresAt },
-    });
+    // One device at a time: signing in replaces any other session, so the other device is signed out on its next
+    // request. The unique index on userId makes two simultaneous sign-ins impossible to both survive.
+    const [, session] = await prisma.$transaction([
+      prisma.session.deleteMany({ where: { userId: doctor.id } }),
+      prisma.session.create({ data: { id: crypto.randomUUID(), userId: doctor.id, expiresAt } }),
+    ]);
     return { doctor: { id: doctor.id, name: doctor.name, email: doctor.email, role: doctor.role }, token: session.id, expiresAt };
   }
 

@@ -157,3 +157,26 @@ describe("Elysia App Route Integration & Smoke Tests", () => {
     expect(body.summary).toContain("Fever");
   });
 });
+
+describe("one session per user", () => {
+  const app = buildApp({ ai: new FakeAiProvider() });
+  const signIn = () =>
+    app.handle(
+      new Request("http://localhost/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "doc@test.local", password: TEST_PASSWORD }),
+      }),
+    );
+  const cookieOf = (res: Response) => (res.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+
+  it("signing in on a second device signs the first one out", async () => {
+    await resetTestDb();
+    const first = cookieOf(await signIn());
+    const second = cookieOf(await signIn());
+    expect(first).not.toBe(second);
+    expect((await app.handle(new Request("http://localhost/auth/me", { headers: { cookie: first } }))).status).toBe(401);
+    expect((await app.handle(new Request("http://localhost/auth/me", { headers: { cookie: second } }))).status).toBe(200);
+    expect(await prisma.session.count({ where: { userId: "doc_default" } })).toBe(1);
+  });
+});

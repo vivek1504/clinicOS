@@ -99,6 +99,7 @@ Cookie sessions, no external dependency:
 - `POST /auth/sign-in` `{ email, password }` → sets an `httpOnly`, `SameSite=Lax` `session` cookie (7 days) and returns `{ doctor }`, where `doctor.role` is `DOCTOR` or `RECEPTIONIST`. The key is named `doctor` for backwards compatibility; it is any staff member.
 - `GET /auth/me` → `{ doctor }` or `401 UNAUTHORIZED`.
 - `POST /auth/sign-out` → revokes the session row and clears the cookie.
+- **One device at a time.** `Session.userId` is unique; signing in deletes the user's previous session in the same transaction, so the other device gets `401` on its next request and lands on sign-in with an explanation. Two devices acting on the same queue was the source of random state conflicts.
 - Every other route except `/health` requires a valid session (`401 UNAUTHORIZED`) and the right role (`403 FORBIDDEN`). Consultations are written with the signed-in doctor's id.
 
 ### Roles

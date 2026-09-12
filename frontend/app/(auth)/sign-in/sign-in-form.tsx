@@ -55,7 +55,7 @@ export function SignInForm() {
     <div>
       <h1 className="display text-[36px] text-ink">Welcome back</h1>
       <p className="mt-2 text-[14px] text-ink-3">
-        {expired ? "Your session ended. Sign in again to continue." : "Sign in with your work email to open today's consultations."}
+        {expired ? "Your session ended, or this account was signed in on another device. Sign in again to continue." : "Sign in with your work email to open today's consultations."}
       </p>
 
       <form ref={formRef} noValidate onSubmit={onSubmit} className="mt-8 grid gap-5" aria-describedby={error ? "sign-in-error" : undefined}>

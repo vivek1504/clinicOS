@@ -133,7 +133,7 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 - **Resilient Unsaved-Changes Guard**: In-flight consultation notes mirror continuously to `sessionStorage`. Route changes trigger custom modal confirmations, and page unloads trigger browser guards. If a session expires or a tab crashes, drafting progress can be restored with a single click.
 - **Voice dictation**: A **Record** button in the notes panel streams the doctor's speech to AssemblyAI straight from the browser and drops each finished sentence into the notes; the sentence still being recognised shows beneath the notes so it never overwrites typing. The backend only mints a short-lived token. Hidden entirely when no key is configured.
 - **Longitudinal History Summarizer**: Synthesizes past visits into concise 2-4 sentence clinical summaries (`POST /ai/patient-summary`) strictly grounded in previously saved notes.
-- **Cookie Session Authentication**: Lightweight, secure session management powered by `Bun.password` (Argon2id) and `httpOnly` lax cookies, completely free of external auth dependencies.
+- **Cookie Session Authentication**: Lightweight, secure session management powered by `Bun.password` (Argon2id) and `httpOnly` lax cookies, completely free of external auth dependencies. One signed-in device per user: a new sign-in replaces the previous session, so two devices can never act on the same queue at once.
 - **Single-Origin Proxy Architecture**: Next.js App Router proxies `/api/*` to the backend service. Upstream API keys remain protected on the server, avoiding cross-origin overhead during local development.
 
 ---
