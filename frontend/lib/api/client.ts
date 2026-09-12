@@ -21,6 +21,16 @@ export function setServerCookieSource(fn: () => Promise<string>) {
   serverCookieSource = fn;
 }
 
+/**
+ * What a Server Component does when the session is gone: redirect to sign-in. Registered from `lib/api/server.ts`
+ * because `next/navigation`'s redirect only works on the server. Without this, a page rendering alongside the
+ * layout hits its own 401 first and shows an error boundary instead of the sign-in screen.
+ */
+let serverUnauthorized: (() => never) | null = null;
+export function setServerUnauthorizedHandler(fn: () => never) {
+  serverUnauthorized = fn;
+}
+
 function baseUrl(): string {
   if (typeof window === "undefined") {
     return process.env.API_URL ?? "http://localhost:3001";
@@ -49,6 +59,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
       // Full navigation on purpose: a stale session should reset all client state, not just change route.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/sign-in?expired=1&next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    }
+    if (res.status === 401 && typeof window === "undefined" && serverUnauthorized && !path.startsWith("/auth/sign-")) {
+      serverUnauthorized();
     }
     throw new ApiError(
       body?.error?.code ?? `HTTP_${res.status}`,
