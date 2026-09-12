@@ -78,7 +78,7 @@ export function NotesPanel({
     if (s.start > pos) segments.push(value.slice(pos, s.start));
     const active = activeSpan && s.start === activeSpan.start && s.end === activeSpan.end;
     segments.push(
-      <mark key={i} className={`rounded-[3px] text-transparent transition-colors duration-500 ${active ? "bg-ai-200" : "bg-ai-100"}`}>
+      <mark key={i} style={{ animationDelay: `${Math.min(i, 10) * 70}ms` }} className={`rounded-[3px] text-transparent transition-colors duration-500 motion-safe:animate-mark-in ${active ? "bg-ai-200" : "bg-ai-100"}`}>
         {value.slice(s.start, s.end)}
       </mark>,
     );
@@ -93,9 +93,9 @@ export function NotesPanel({
   return (
     <section
       aria-labelledby="notes-h"
-      className={`panel flex min-h-[60dvh] flex-col md:min-h-[420px] transition-[box-shadow] duration-200 xl:h-full xl:min-h-0 ${
+      className={`panel flex min-h-[60dvh] flex-col md:min-h-[420px] transition-[box-shadow] duration-300 xl:h-full xl:min-h-0 ${
         recording ? "shadow-2 ring-1 ring-danger-700/35" : "focus-within:shadow-2 focus-within:ring-1 focus-within:ring-accent-500/30"
-      }`}
+      } ${hasDraft && !recording ? "shadow-none ring-1 ring-line" : ""}`}
     >
       <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
         <div>

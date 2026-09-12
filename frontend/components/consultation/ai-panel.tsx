@@ -4,7 +4,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SPRING } from "@/components/shared/reveal";
-import { AiMark } from "@/components/shared/source-mark";
 import { aiErrorCopy } from "@/lib/ai-error-messages";
 import type { AiStatus } from "./draft-reducer";
 
@@ -35,7 +34,7 @@ export function AiPanel({
     <section
       aria-labelledby="ai-h"
       aria-busy={mode === "running" || undefined}
-      className={`panel relative ${mode === "empty" ? "hidden md:flex lg:rounded-none lg:border-l lg:border-dashed lg:border-line-strong lg:bg-transparent lg:shadow-none" : "flex"} min-h-[280px] flex-col md:min-h-[420px] overflow-hidden transition-shadow duration-300 xl:h-full xl:min-h-0 ${
+      className={`panel relative ${mode === "empty" ? "hidden md:flex md:rounded-none md:border-l md:border-dashed md:border-line-strong md:bg-transparent md:shadow-none" : "flex"} min-h-[280px] flex-col md:min-h-[420px] overflow-hidden transition-shadow duration-300 xl:h-full xl:min-h-0 ${
         mode === "running" || (mode === "draft" && aiGenerated) ? "ai-surface" : ""
       } ${mode === "running" ? "shadow-ai" : ""}`}
     >
@@ -43,7 +42,6 @@ export function AiPanel({
         <div>
           <h2 id="ai-h" className="inline-flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-ink">
             {mode === "draft" && !aiGenerated ? "Structured note" : "Structured draft"}
-            {mode === "draft" && !aiGenerated ? null : <AiMark />}
           </h2>
         </div>
       </header>

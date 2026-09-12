@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ArrowRightIcon, ChevronDownIcon } from "lucide-react";
 import { SafeLink } from "@/components/shared/safe-link";
-import { Button } from "@/components/ui/button";
 import type { ConsultationDto, PatientDto } from "@/lib/api/types";
 import { formatDate, formatGender } from "@/lib/format";
 
@@ -13,10 +12,10 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
   const last = history.length ? [...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] : null;
 
   return (
-    <aside aria-labelledby="ctx-h" className={`max-xl:rounded-lg max-xl:bg-surface max-xl:shadow-1 max-md:sticky max-md:top-[52px] max-md:z-10 xl:self-start xl:border-r xl:border-line xl:pr-5 ${className}`}>
+    <aside aria-labelledby="ctx-h" className={`max-xl:rounded-lg max-xl:bg-surface max-xl:shadow-1 max-md:sticky max-md:top-[52px] max-md:z-10 xl:self-start xl:pr-4 ${className}`}>
       <div className="flex items-center justify-between gap-3 px-5 py-4 xl:px-0 xl:pt-1">
         <div>
-          <h2 id="ctx-h" className="text-[15px] font-semibold tracking-[-0.01em] text-ink">
+          <h2 id="ctx-h" className="text-[15px] font-semibold tracking-[-0.01em] text-ink xl:text-[14px]">
             {patient.name}
           </h2>
           <p className="mt-0.5 text-[13px] text-ink-3">
@@ -69,10 +68,10 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
 
       {/* Guarded link: leaving with unsaved notes still asks first. */}
       <div className="border-t border-line px-5 py-3 xl:px-0">
-        <Button variant="secondary" size="sm" className="w-full" render={<SafeLink href={`/patients/${patient.id}`} />}>
-          Open patient record
-          <ArrowRightIcon />
-        </Button>
+        <SafeLink href={`/patients/${patient.id}`} className="group inline-flex items-center gap-1 text-[12px] font-medium text-ink-3 transition-colors hover:text-ink">
+          View full record
+          <ArrowRightIcon className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
+        </SafeLink>
       </div>
     </aside>
   );
@@ -82,7 +81,7 @@ function Item({ label, tone, children }: { label: string; tone?: "danger" | "qui
   return (
     <div className="min-w-0 bg-surface px-5 py-3.5 xl:bg-transparent xl:px-0">
       <dt className="eyebrow">{label}</dt>
-      <dd className={`mt-1 text-[14px] leading-snug ${tone === "danger" ? "font-medium text-danger-700" : tone === "quiet" ? "text-ink-3" : "font-medium text-ink"}`}>
+      <dd className={`mt-1 text-[14px] leading-snug xl:text-[13px] ${tone === "danger" ? "font-medium text-danger-700" : tone === "quiet" ? "text-ink-3" : "font-medium text-ink xl:font-normal xl:text-ink-2"}`}>
         {children}
       </dd>
     </div>

@@ -82,6 +82,7 @@
   --animate-pulse-dot: pulse-dot 1.8s ease-in-out infinite;
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-scan: scan 1.6s var(--ease-in-out) infinite;
+  --animate-mark-in: mark-in 360ms var(--ease-out) both;
 
   @keyframes fade-up {
     from {
@@ -91,6 +92,12 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  /* Source phrases light up left to right as the draft lands, then fade with the mirror. */
+  @keyframes mark-in {
+    from {
+      background-color: transparent;
     }
   }
   @keyframes fade-in {
@@ -264,12 +271,16 @@ html {
     background: transparent;
   }
   .doctor-item {
-    border-left-color: var(--color-accent-500);
+    border-left-color: transparent;
     background: transparent;
   }
   .ai-item:hover,
   .doctor-item:hover {
     background: var(--color-surface-2);
+  }
+  .doctor-item:hover,
+  .doctor-item:focus-within {
+    border-left-color: var(--color-accent-500);
   }
   .ai-item:focus-within {
     border-left-color: var(--color-ai-500);

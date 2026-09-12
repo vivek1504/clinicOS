@@ -35,14 +35,17 @@ export function StructuredDraft({
   const unreviewed = countUnreviewedAi(draft);
   const cc = draft.chiefComplaint;
   const bodyRef = useRef<HTMLDivElement>(null);
-  const cursor = useRef(-1);
 
-  /** Walks the unreviewed AI fields in document order; editing one flips it to the doctor and drops it from the walk. */
+  /** Walks the unreviewed AI fields in document order from wherever the caret is; editing one flips it to the doctor and
+   *  drops it from the walk. Past the last one it stops rather than wrapping: a review has an end. */
   const reviewNext = () => {
-    const inputs = Array.from(bodyRef.current?.querySelectorAll<HTMLInputElement>(".ai-item input") ?? []);
-    if (!inputs.length) return;
-    cursor.current = (cursor.current + 1) % inputs.length;
-    const el = inputs[cursor.current];
+    const body = bodyRef.current;
+    const active = document.activeElement;
+    const inside = active instanceof HTMLElement && body?.contains(active);
+    const el = Array.from(body?.querySelectorAll<HTMLInputElement>(".ai-item input") ?? []).find(
+      (i) => !inside || active.compareDocumentPosition(i) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    if (!el) return;
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length); // caret at the end: typing appends, it never wipes the item
     el.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -70,6 +73,7 @@ export function StructuredDraft({
                 type="button"
                 onClick={reviewNext}
                 aria-live="polite"
+                title="⌘. next · ↵ accept as written · type to change"
                 className="num inline-flex h-7 items-center gap-1.5 rounded-full bg-ai-100 px-3 text-[12px] font-medium text-ai-700 transition-colors duration-300 hover:bg-ai-200"
               >
                 Review {unreviewed} {unreviewed === 1 ? "item" : "items"}
@@ -112,6 +116,13 @@ export function StructuredDraft({
               id="chief-complaint"
               value={cc.value}
               onChange={(e) => onChiefComplaint(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && cc.source === "ai") {
+                  e.preventDefault();
+                  onChiefComplaint(cc.value);
+                  reviewNext();
+                }
+              }}
               placeholder="Primary concern, in a few words"
               className="h-11 min-w-0 flex-1 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-ink outline-none placeholder:text-[16px] placeholder:font-normal placeholder:text-ink-4"
             />
@@ -130,6 +141,7 @@ export function StructuredDraft({
               onEdit={(id, v) => onItemEdit(key, id, v)}
               onRemove={(id) => onItemRemove(key, id)}
               onItemFocus={onItemFocus}
+              onReviewNext={reviewNext}
             />
           </Reveal>
         ))}
@@ -144,11 +156,18 @@ export function StructuredDraft({
               {missingInformation.map((m, i) => (
                 <li key={`${m}-${i}`} className="flex gap-2.5 text-[13px] leading-relaxed text-ink-2">
                   <span aria-hidden="true" className="mt-[8px] size-1.5 shrink-0 rounded-full border border-ai-500" />
-                  {m}
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById(`${fieldFor(m)}-add`)?.focus()}
+                    className="text-left underline-offset-2 hover:text-ink hover:underline"
+                    title="Add it above if known"
+                  >
+                    {m}
+                  </button>
                 </li>
               ))}
             </ul>
-            <p className="mt-2.5 text-[12px] text-ink-3">Add above if known. Nothing here goes into the note by itself.</p>
+            <p className="mt-2.5 text-[12px] text-ink-3">Click one to add it if known. Nothing here goes into the note by itself.</p>
             </section>
           </Reveal>
         ) : null}
@@ -156,4 +175,13 @@ export function StructuredDraft({
 
     </div>
   );
+}
+
+// ponytail: keyword guess at which section a missing detail belongs to; the model could name the field if this misfires often.
+function fieldFor(missing: string): DraftListField {
+  const m = missing.toLowerCase();
+  if (/medic|drug|prescri|dose/.test(m)) return "medicationsMentioned";
+  if (/histor|previous|past|family|social|allerg/.test(m)) return "relevantHistory";
+  if (/plan|follow|treat|investig|test|refer/.test(m)) return "doctorPlan";
+  return "symptoms";
 }

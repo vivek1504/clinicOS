@@ -136,7 +136,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           chiefComplaint: {
             value: action.value,
             source: "doctor",
-            edited: state.draft.chiefComplaint.source === "ai" || state.draft.chiefComplaint.edited,
+            edited: (state.draft.chiefComplaint.source === "ai" && state.draft.chiefComplaint.value !== action.value) || state.draft.chiefComplaint.edited,
           },
         },
       });
@@ -160,7 +160,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ...state.draft,
           [action.field]: state.draft[action.field].map((item) =>
             item.id === action.id
-              ? { ...item, value: action.value, source: "doctor", edited: item.source === "ai" || item.edited }
+              ? { ...item, value: action.value, source: "doctor", edited: (item.source === "ai" && item.value !== action.value) || item.edited }
               : item,
           ),
         },

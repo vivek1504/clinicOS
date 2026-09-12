@@ -15,6 +15,7 @@ export function ListField({
   onEdit,
   onRemove,
   onItemFocus,
+  onReviewNext,
 }: {
   id: string;
   label: string;
@@ -25,11 +26,12 @@ export function ListField({
   onRemove: (itemId: string) => void;
   /** The row under the pointer or cursor, or null when none; the notes panel highlights its source. */
   onItemFocus?: (value: string | null) => void;
+  /** Enter on an AI row accepts it as written and walks to the next unreviewed one. */
+  onReviewNext?: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const addRef = useRef<HTMLInputElement>(null);
   const reduce = useReducedMotion();
-  const unreviewed = items.filter((i) => i.source === "ai").length;
 
   const commitAdd = () => {
     const v = draft.trim();
@@ -40,16 +42,10 @@ export function ListField({
   };
 
   return (
-    <fieldset className="min-w-0">
+    <fieldset className="group/field min-w-0">
       <legend className="flex w-full items-baseline justify-between gap-3 pb-2.5">
         <span className="eyebrow text-ink-2">{label}</span>
-        {unreviewed > 0 ? (
-          <span className="num text-[11px] font-medium text-ai-700">
-            {unreviewed} to review
-          </span>
-        ) : items.length > 0 ? (
-          <span className="num text-[11px] text-ink-3">{items.length}</span>
-        ) : null}
+        {items.length > 0 ? <span className="num text-[11px] text-ink-3">{items.length}</span> : null}
       </legend>
 
       <ul className="space-y-1.5">
@@ -71,6 +67,7 @@ export function ListField({
               onBlur={() => onItemFocus?.(null)}
             >
               {item.source === "ai" ? <span className="sr-only">AI draft: </span> : null}
+              <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-ink-4" />
               <input
                 aria-label={`${label} item ${idx + 1}`}
                 value={item.value}
@@ -79,6 +76,10 @@ export function ListField({
                   if (e.key === "Backspace" && item.value === "") {
                     e.preventDefault();
                     onRemove(item.id);
+                  } else if (e.key === "Enter" && item.source === "ai") {
+                    e.preventDefault();
+                    onEdit(item.id, item.value);
+                    onReviewNext?.();
                   }
                 }}
                 className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none"
@@ -98,7 +99,8 @@ export function ListField({
           ))}
         </AnimatePresence>
 
-        <li className="flex items-center gap-2 border-l-2 border-transparent pl-3 transition-colors duration-150 focus-within:border-accent-500 focus-within:bg-surface hover:bg-surface-2">
+        {/* With content in place the add row steps back until the section is hovered or tabbed into; an empty section keeps it. */}
+        <li className={`flex items-center gap-2 border-l-2 border-transparent pl-3 transition-[opacity,background-color,border-color] duration-150 focus-within:border-accent-500 focus-within:bg-surface hover:bg-surface-2 ${items.length ? "opacity-0 group-hover/field:opacity-100 group-focus-within/field:opacity-100" : ""}`}>
           <PlusIcon className="size-3.5 shrink-0 text-ink-3" aria-hidden="true" />
           <input
             ref={addRef}

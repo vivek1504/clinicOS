@@ -150,7 +150,7 @@ function medicationsFrom(consultations: ConsultationDto[]): Medication[] {
 
 function MedicationsCard({ medications }: { medications: Medication[] }) {
   return (
-    <Card title="Medications mentioned" aside={medications.length ? `${medications.length} in notes` : undefined}>
+    <Card title="Medications mentioned in notes" aside={medications.length ? String(medications.length) : undefined}>
       {medications.length === 0 ? (
         <Empty>No medications mentioned in this patient&apos;s notes.</Empty>
       ) : (

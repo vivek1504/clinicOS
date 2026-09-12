@@ -15,7 +15,7 @@ import { useGuardedRouter } from "@/lib/navigation-blocker";
 import { findSpan, spansFor } from "@/lib/evidence";
 import { AiPanel, type AiPanelMode } from "./ai-panel";
 import { ContextRail } from "./context-rail";
-import { countUnreviewedAi, hasFormContent, isEdited, toFinalNote } from "./draft-model";
+import { hasFormContent, isEdited, toFinalNote } from "./draft-model";
 import { editorReducer, initialEditorState } from "./draft-reducer";
 import { NotesPanel } from "./notes-panel";
 import { notesValidationMessage } from "./notes-validation";
@@ -121,7 +121,7 @@ export function ConsultationWorkspace({
   const activeSpan = useMemo(() => (activeItem ? findSpan(state.rawNotes, activeItem) : null), [activeItem, state.rawNotes]);
   useEffect(() => {
     if (!flash) return;
-    const id = setTimeout(() => setFlash(false), 2600);
+    const id = setTimeout(() => setFlash(false), 1200);
     return () => clearTimeout(id);
   }, [flash]);
 
@@ -235,7 +235,7 @@ export function ConsultationWorkspace({
           : "empty";
 
   if (saved) {
-    return <SavedState patientName={patient.name} patientId={patient.id} linkedToAppointment={Boolean(appointmentId)} />;
+    return <SavedState patientName={patient.name} patientId={patient.id} linkedToAppointment={Boolean(appointmentId)} note={finalNote} />;
   }
 
   return (
@@ -304,11 +304,11 @@ export function ConsultationWorkspace({
       <div
         className={`grid items-start gap-5 xl:min-h-0 xl:flex-1 xl:items-stretch motion-safe:transition-[grid-template-columns] motion-safe:duration-500 motion-safe:ease-out ${
           mode === "empty"
-            ? "lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[200px_minmax(0,1fr)_260px]"
-            : "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:grid-cols-[200px_minmax(0,2fr)_minmax(0,3fr)]"
+            ? "md:grid-cols-[minmax(0,1fr)_200px] xl:grid-cols-[200px_minmax(0,1fr)_260px]"
+            : "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:grid-cols-[200px_minmax(0,2fr)_minmax(0,3fr)]"
         }`}
       >
-        <ContextRail patient={patient} history={history} className="lg:col-span-2 xl:col-span-1" />
+        <ContextRail patient={patient} history={history} className="md:col-span-2 xl:col-span-1" />
 
         <NotesPanel
           value={state.rawNotes}
@@ -360,8 +360,6 @@ export function ConsultationWorkspace({
       </div>
 
       <SaveBar
-        unreviewedAi={countUnreviewedAi(state.draft)}
-        wasAiUsed={wasAiUsed}
         dirty={state.dirty}
         canSave={canSave}
         saving={saving}

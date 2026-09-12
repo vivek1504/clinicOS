@@ -3,11 +3,9 @@
 import { AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ApiError } from "@/lib/api/client";
-import { pluralize } from "@/lib/format";
 
+/** Persistence only. Whether the draft is reviewed is the draft header's business. */
 export function SaveBar({
-  unreviewedAi,
-  wasAiUsed,
   dirty,
   canSave,
   saving,
@@ -15,8 +13,6 @@ export function SaveBar({
   onSave,
   onDiscard,
 }: {
-  unreviewedAi: number;
-  wasAiUsed: boolean;
   dirty: boolean;
   canSave: boolean;
   saving: boolean;
@@ -37,16 +33,10 @@ export function SaveBar({
             </span>
           ) : (
             <>
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className={`size-1.5 rounded-full transition-colors duration-300 ${saving ? "bg-accent-500 animate-pulse-dot" : dirty ? "bg-wait-700" : "bg-line-strong"}`}
-                />
-                {saving ? "Saving…" : dirty ? "Unsaved" : "Nothing to save yet"}
-              </span>
-              {wasAiUsed ? (
-                <span className={unreviewedAi > 0 ? "text-ai-700" : "text-accent-700"}>
-                  {unreviewedAi > 0 ? `${pluralize(unreviewedAi, "item")} to review` : "Ready to record"}
+              {saving || dirty ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden="true" className={`size-1.5 rounded-full transition-colors duration-300 ${saving ? "bg-accent-500 animate-pulse-dot" : "bg-wait-700"}`} />
+                  {saving ? "Saving…" : "Unsaved"}
                 </span>
               ) : null}
               <span className="hidden items-center gap-1 text-ink-3 lg:inline-flex">
