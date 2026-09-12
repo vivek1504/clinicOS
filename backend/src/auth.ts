@@ -49,7 +49,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       cookie[SESSION_COOKIE]!.set({ value: token, ...cookieOptions });
       return { doctor };
     },
-    { body: SignInBody, response: { 200: MeResponse, 400: ErrorEnvelope, 401: ErrorEnvelope } },
+    { body: SignInBody, response: { 200: MeResponse, 400: ErrorEnvelope, 401: ErrorEnvelope, 429: ErrorEnvelope } },
   )
   .post(
     "/sign-out",
