@@ -1,7 +1,14 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient, Role } from "@prisma/client";
 import { AppError } from "../lib/errors";
 
 type Db = PrismaClient | Prisma.TransactionClient;
+
+/** The front desk works every doctor's schedule; a doctor acts only on appointments booked with them. */
+export function assertOwnsAppointment(actor: { id: string; role: Role }, appt: { doctorId: string }): void {
+  if (actor.role === "DOCTOR" && appt.doctorId !== actor.id) {
+    throw new AppError("FORBIDDEN", "This appointment is booked with another doctor");
+  }
+}
 
 /**
  * A WAITING (or returning NO_SHOW) appointment may start only when nobody is in the room and everyone booked earlier that day

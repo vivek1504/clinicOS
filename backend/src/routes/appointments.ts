@@ -25,7 +25,7 @@ export const appointmentRoutes = new Elysia({ prefix: "/appointments" })
     "/:id",
     async ({ params, body, appointmentService, doctor }) => {
       if (body.status) return await appointmentService.patchStatus(params.id, body.status, doctor!);
-      if (body.scheduledAt || body.reason) return await appointmentService.reschedule(params.id, body);
+      if (body.scheduledAt || body.reason) return await appointmentService.reschedule(params.id, body, doctor!);
       throw new AppError("VALIDATION", "Nothing to change");
     },
     {

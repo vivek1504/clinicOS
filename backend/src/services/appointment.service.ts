@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../lib/errors";
 import { getDayRange } from "../lib/dates";
-import { assertCanStart } from "./queue";
+import { assertCanStart, assertOwnsAppointment } from "./queue";
 import { AppointmentStatus, Prisma, type Role } from "@prisma/client";
 
 export interface AppointmentDtoType {
@@ -133,9 +133,10 @@ export class AppointmentService {
     }
   }
 
-  async reschedule(id: string, input: { scheduledAt?: string; reason?: string }): Promise<AppointmentDtoType> {
-    const existing = await prisma.appointment.findUnique({ where: { id }, select: { status: true, patientId: true } });
+  async reschedule(id: string, input: { scheduledAt?: string; reason?: string }, actor: { id: string; role: Role }): Promise<AppointmentDtoType> {
+    const existing = await prisma.appointment.findUnique({ where: { id }, select: { status: true, patientId: true, doctorId: true } });
     if (!existing) throw new AppError("NOT_FOUND", `Appointment not found: ${id}`);
+    assertOwnsAppointment(actor, existing);
     if (existing.status === "IN_CONSULTATION" || existing.status === "COMPLETED") {
       throw new AppError("CONFLICT", `Cannot reschedule an appointment that is ${existing.status.toLowerCase().replace("_", " ")}`);
     }
@@ -161,9 +162,10 @@ export class AppointmentService {
     }
   }
 
-  async patchStatus(id: string, newStatus: AppointmentStatus, actor: { role: Role }): Promise<AppointmentDtoType> {
+  async patchStatus(id: string, newStatus: AppointmentStatus, actor: { id: string; role: Role }): Promise<AppointmentDtoType> {
     const existing = await prisma.appointment.findUnique({ where: { id }, include: INCLUDE });
     if (!existing) throw new AppError("NOT_FOUND", `Appointment not found: ${id}`);
+    assertOwnsAppointment(actor, existing);
     if (existing.status === newStatus) return toDto(existing);
 
     const allowed = TRANSITIONS[existing.status][newStatus];

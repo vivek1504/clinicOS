@@ -45,6 +45,10 @@ export function normalizeNote(raw: unknown): StructuredNoteType {
   return StructuredNoteSchema.parse(normalized);
 }
 
+/** Postgres jsonb reorders keys, so a note read back must compare equal to the one written: sort keys first. */
+const stable = (v: unknown): unknown =>
+  Array.isArray(v) ? v.map(stable) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, stable((v as Record<string, unknown>)[k])])) : v;
+
 export function deepEqual(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(stable(a)) === JSON.stringify(stable(b));
 }

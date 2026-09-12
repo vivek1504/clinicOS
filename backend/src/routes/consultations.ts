@@ -24,6 +24,7 @@ export const consultationRoutes = new Elysia({ prefix: "/consultations" })
         200: ConsultationDto,
         201: ConsultationDto,
         400: ErrorEnvelope,
+        403: ErrorEnvelope,
         404: ErrorEnvelope,
         409: ErrorEnvelope,
       },
@@ -31,8 +32,8 @@ export const consultationRoutes = new Elysia({ prefix: "/consultations" })
   )
   .patch(
     "/:id",
-    async ({ params, body, consultationService }) => {
-      return await consultationService.patch(params.id, body);
+    async ({ params, body, consultationService, doctor }) => {
+      return await consultationService.patch(params.id, body, doctor!.id);
     },
     {
       params: IdParams,
