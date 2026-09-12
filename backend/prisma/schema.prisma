@@ -51,7 +51,7 @@ model Patient {
   name          String
   dob           DateTime       @db.Date
   gender        Gender
-  phone         String
+  phone         String         @unique // one record per phone number; the app turns the violation into a named conflict
   allergies     String[]       @default([])
   conditions    String[]       @default([])
   appointments  Appointment[]
@@ -85,6 +85,7 @@ model Consultation {
   appointmentId   String?      @unique
   clientRequestId String?      @unique
   createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now()) @updatedAt
   rawNotes        String
   aiDraft         Json?
   finalNote       Json

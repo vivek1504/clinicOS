@@ -15,7 +15,7 @@ export const PatientDto = t.Object({
 });
 
 export const GetPatientsQuery = t.Object({
-  q: t.Optional(t.String()),
+  q: t.Optional(t.String({ maxLength: 100 })),
 });
 
 export const CreatePatientBody = t.Object({
@@ -23,8 +23,8 @@ export const CreatePatientBody = t.Object({
   dob: t.String({ pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
   gender: t.Enum(Gender),
   phone: t.String({ pattern: "^\\d{10}$" }), // Indian mobile numbers: ten digits, nothing else
-  allergies: t.Optional(t.Array(t.String({ maxLength: 80 }))),
-  conditions: t.Optional(t.Array(t.String({ maxLength: 80 }))),
+  allergies: t.Optional(t.Array(t.String({ maxLength: 80 }), { maxItems: 50 })),
+  conditions: t.Optional(t.Array(t.String({ maxLength: 80 }), { maxItems: 50 })),
 });
 
 export const UpdatePatientBody = t.Partial(CreatePatientBody);

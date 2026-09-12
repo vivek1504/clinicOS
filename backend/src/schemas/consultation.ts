@@ -1,13 +1,16 @@
 import { t } from "elysia";
 
+// Generous for a note, tight enough that nobody posts a novel per field.
+const Items = t.Array(t.String({ maxLength: 500 }), { maxItems: 100 });
+
 export const StructuredNote = t.Object(
   {
-    chiefComplaint: t.Nullable(t.String()),
-    symptoms: t.Array(t.String()),
-    relevantHistory: t.Array(t.String()),
-    medicationsMentioned: t.Array(t.String()),
-    doctorPlan: t.Array(t.String()),
-    missingInformation: t.Array(t.String()),
+    chiefComplaint: t.Nullable(t.String({ maxLength: 500 })),
+    symptoms: Items,
+    relevantHistory: Items,
+    medicationsMentioned: Items,
+    doctorPlan: Items,
+    missingInformation: Items,
   },
   { additionalProperties: false }
 );
@@ -19,7 +22,7 @@ export const CreateConsultationBody = t.Object({
   rawNotes: t.String({ minLength: 1, maxLength: 5000 }),
   aiDraft: t.Nullable(StructuredNote),
   finalNote: StructuredNote,
-  aiModel: t.Optional(t.String()),
+  aiModel: t.Optional(t.String({ maxLength: 120 })),
   aiLatencyMs: t.Optional(t.Integer({ minimum: 0 })),
   wasAiUsed: t.Boolean(),
   wasAiEdited: t.Boolean(),

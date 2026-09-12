@@ -1,7 +1,10 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../lib/errors";
 import { getAge } from "../lib/dates";
-import { Gender } from "@prisma/client";
+import { Gender, Prisma } from "@prisma/client";
+
+const isUniqueViolation = (err: unknown): err is Prisma.PrismaClientKnownRequestError =>
+  err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 
 export interface PatientDtoType {
   id: string;
@@ -81,42 +84,53 @@ export class PatientService {
     return toDto(p);
   }
 
-  /** One record per phone number. A match is refused and names the existing patient so the desk can open them. */
+  /** The unique index fired: name the patient who holds the number so the desk can open them instead. */
+  private async phoneTaken(phone: string): Promise<never> {
+    const existing = await prisma.patient.findUnique({ where: { phone }, select: { id: true, name: true } });
+    throw new AppError("CONFLICT", `${existing?.name ?? "Someone"} is already registered with this phone number`, { patientId: existing?.id, name: existing?.name });
+  }
+
+  /** One record per phone number, enforced by the database; the message names the existing patient. */
   async create(input: PatientInput): Promise<PatientDtoType> {
     const phone = input.phone.trim();
-    const candidates = await prisma.patient.findMany({ where: { phone: { contains: digits(phone).slice(-4) } }, select: { id: true, name: true, phone: true } });
-    const existing = candidates.find((c) => digits(c.phone) === digits(phone));
-    if (existing) {
-      throw new AppError("CONFLICT", `${existing.name} is already registered with this phone number`, { patientId: existing.id, name: existing.name });
+    try {
+      const p = await prisma.patient.create({
+        data: {
+          name: input.name.trim(),
+          dob: parseDob(input.dob),
+          gender: input.gender,
+          phone,
+          allergies: cleanList(input.allergies) ?? [],
+          conditions: cleanList(input.conditions) ?? [],
+        },
+      });
+      return toDto(p);
+    } catch (err) {
+      if (isUniqueViolation(err)) return this.phoneTaken(phone);
+      throw err;
     }
-    const p = await prisma.patient.create({
-      data: {
-        name: input.name.trim(),
-        dob: parseDob(input.dob),
-        gender: input.gender,
-        phone,
-        allergies: cleanList(input.allergies) ?? [],
-        conditions: cleanList(input.conditions) ?? [],
-      },
-    });
-    return toDto(p);
   }
 
   async update(id: string, patch: Partial<PatientInput>): Promise<PatientDtoType> {
     const exists = await prisma.patient.findUnique({ where: { id }, select: { id: true } });
     if (!exists) throw new AppError("NOT_FOUND", `Patient not found: ${id}`);
-    const p = await prisma.patient.update({
-      where: { id },
-      data: {
-        ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-        ...(patch.dob !== undefined ? { dob: parseDob(patch.dob) } : {}),
-        ...(patch.gender !== undefined ? { gender: patch.gender } : {}),
-        ...(patch.phone !== undefined ? { phone: patch.phone.trim() } : {}),
-        ...(patch.allergies !== undefined ? { allergies: cleanList(patch.allergies) } : {}),
-        ...(patch.conditions !== undefined ? { conditions: cleanList(patch.conditions) } : {}),
-      },
-    });
-    return toDto(p);
+    try {
+      const p = await prisma.patient.update({
+        where: { id },
+        data: {
+          ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+          ...(patch.dob !== undefined ? { dob: parseDob(patch.dob) } : {}),
+          ...(patch.gender !== undefined ? { gender: patch.gender } : {}),
+          ...(patch.phone !== undefined ? { phone: patch.phone.trim() } : {}),
+          ...(patch.allergies !== undefined ? { allergies: cleanList(patch.allergies) } : {}),
+          ...(patch.conditions !== undefined ? { conditions: cleanList(patch.conditions) } : {}),
+        },
+      });
+      return toDto(p);
+    } catch (err) {
+      if (isUniqueViolation(err) && patch.phone !== undefined) return this.phoneTaken(patch.phone.trim());
+      throw err;
+    }
   }
 
   async getConsultationsByPatientId(patientId: string): Promise<PatientConsultationItemDto[]> {
