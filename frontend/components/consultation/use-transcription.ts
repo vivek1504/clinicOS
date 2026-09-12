@@ -49,12 +49,11 @@ function describe(err: unknown): string {
 
 /**
  * Live dictation into the notes. Audio goes browser → AssemblyAI over a WebSocket; the backend only mints the token.
- * Finalised sentences are handed to `onFinal`; the in-progress one is exposed as `partial` so the doctor's own
- * typing is never overwritten by text that may still change.
+ * Every transcript goes to `onText` as it arrives: partials with final=false, replacing the last partial, and the
+ * finished sentence with final=true. A final empty string means the session ended; keep whatever was heard.
  */
-export function useTranscription({ onFinal }: { onFinal: (text: string) => void }) {
+export function useTranscription({ onText }: { onText: (text: string, final: boolean) => void }) {
   const [status, setStatus] = useState<TranscriptionStatus>("idle");
-  const [partial, setPartial] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   /** Taps the mic for the level meter; null when not recording. */
@@ -63,9 +62,9 @@ export function useTranscription({ onFinal }: { onFinal: (text: string) => void 
   const [device, setDevice] = useState<string | null>(null);
   /** True once a few seconds pass with nothing but silence coming in. */
   const [silent, setSilent] = useState(false);
-  const onFinalRef = useRef(onFinal);
+  const onTextRef = useRef(onText);
   useEffect(() => {
-    onFinalRef.current = onFinal;
+    onTextRef.current = onText;
   });
 
   const session = useRef<{ ws: WebSocket; ctx: AudioContext; stream: MediaStream; retried: boolean } | null>(null);
@@ -78,6 +77,7 @@ export function useTranscription({ onFinal }: { onFinal: (text: string) => void 
     s.ws.close();
     s.stream.getTracks().forEach((t) => t.stop());
     void s.ctx.close();
+    onTextRef.current("", true);
   }, []);
 
   const start = useCallback(async function start(retried = false) {
@@ -126,21 +126,15 @@ export function useTranscription({ onFinal }: { onFinal: (text: string) => void 
         const msg = JSON.parse(String(e.data)) as { type: string } | Turn;
         if (msg.type !== "Turn") return;
         const turn = msg as Turn;
-        if (turn.end_of_turn) {
-          // With format_turns on, a finished turn arrives twice: raw, then punctuated. Keep the second.
-          if (!turn.turn_is_formatted) return;
-          setPartial("");
-          if (turn.transcript.trim()) onFinalRef.current(turn.transcript.trim());
-        } else {
-          setPartial(turn.transcript);
-        }
+        // With format_turns on, a finished turn arrives twice: raw, then punctuated. The raw one is just another partial.
+        onTextRef.current(turn.transcript, turn.end_of_turn && turn.turn_is_formatted);
       };
       ws.onclose = (ev) => {
         if (session.current !== current) return; // we closed it
         session.current = null;
         stream?.getTracks().forEach((t) => t.stop());
         void ctx?.close();
-        setPartial("");
+        onTextRef.current("", true);
         setAnalyser(null);
         setSilent(false);
         // One quiet reconnect covers a dropped network or an expired session; a second failure is reported.
@@ -169,7 +163,6 @@ export function useTranscription({ onFinal }: { onFinal: (text: string) => void 
 
   const stop = useCallback(() => {
     teardown();
-    setPartial("");
     setStatus("idle");
     setStartedAt(null);
     setAnalyser(null);
@@ -199,5 +192,5 @@ export function useTranscription({ onFinal }: { onFinal: (text: string) => void 
   // Leaving the page (save, discard, navigation) releases the microphone.
   useEffect(() => teardown, [teardown]);
 
-  return { status, partial, error, startedAt, analyser, device, silent, start: () => void start(), stop };
+  return { status, error, startedAt, analyser, device, silent, start: () => void start(), stop };
 }

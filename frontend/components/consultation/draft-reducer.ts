@@ -41,6 +41,8 @@ export interface EditorState {
   draftVersion: number;
   /** What a regenerate replaced, so it is one click away. Session only; not persisted. */
   previous: PreviousDraft | null;
+  /** The sentence still being recognised, sitting at the end of rawNotes; "" when none. Session only. */
+  live: string;
   dirty: boolean;
 }
 
@@ -49,7 +51,8 @@ export type PreviousDraft = Pick<EditorState, "draft" | "aiDraft" | "missingInfo
 export type EditorAction =
   | { type: "SET_RAW_NOTES"; value: string }
   /** A finalised dictation segment lands after whatever is already written. */
-  | { type: "APPEND_RAW_NOTES"; text: string }
+  /** Dictation. A partial replaces the previous partial at the end of the notes; a final fixes it in place. */
+  | { type: "DICTATE"; text: string; final: boolean }
   | { type: "AI_START"; startedAt: number }
   | { type: "AI_SUCCESS"; response: AiStructureResponse }
   | { type: "AI_ERROR"; code: string; message: string }
@@ -74,6 +77,7 @@ export function initialEditorState(clientRequestId: string = newId()): EditorSta
     ai: { status: "idle" },
     notesChangedSinceDraft: false,
     previous: null,
+    live: "",
     draftVersion: 0,
     dirty: false,
   };
@@ -96,10 +100,14 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         notesChangedSinceDraft: state.aiDraft !== null && action.value !== state.rawNotes,
       });
 
-    case "APPEND_RAW_NOTES": {
-      const before = state.rawNotes.trimEnd();
+    case "DICTATE": {
+      // The previous partial is only taken back if it is still the tail; typing over it makes it the doctor's.
+      const base = state.live && state.rawNotes.endsWith(state.live) ? state.rawNotes.slice(0, -state.live.length) : state.rawNotes;
+      const text = action.text.trim();
+      const before = base.trimEnd();
       const sep = before.length === 0 ? "" : /[.!?]$/.test(before) ? " " : ". ";
-      return editorReducer(state, { type: "SET_RAW_NOTES", value: before + sep + action.text });
+      const value = text ? before + sep + text : action.final ? state.rawNotes : base;
+      return { ...editorReducer(state, { type: "SET_RAW_NOTES", value }), live: action.final ? "" : text };
     }
 
     case "AI_START":

@@ -132,14 +132,35 @@ describe("editorReducer", () => {
   });
 });
 
-describe("APPEND_RAW_NOTES", () => {
-  test("joins dictated segments as sentences without touching typed text", () => {
+describe("DICTATE", () => {
+  test("joins dictated sentences without touching typed text", () => {
     let s = initialEditorState("req-2");
-    s = editorReducer(s, { type: "APPEND_RAW_NOTES", text: "Dry cough for two weeks." });
+    s = editorReducer(s, { type: "DICTATE", text: "Dry cough for two weeks.", final: true });
     expect(s.rawNotes).toBe("Dry cough for two weeks.");
     s = editorReducer(s, { type: "SET_RAW_NOTES", value: s.rawNotes + " No fever  " });
-    s = editorReducer(s, { type: "APPEND_RAW_NOTES", text: "Chest clear on exam" });
+    s = editorReducer(s, { type: "DICTATE", text: "Chest clear on exam", final: true });
     expect(s.rawNotes).toBe("Dry cough for two weeks. No fever. Chest clear on exam");
     expect(s.dirty).toBe(true);
+  });
+
+  test("a partial is written straight in and replaced as it grows, then fixed by the final", () => {
+    let s = editorReducer(initialEditorState("req-3"), { type: "SET_RAW_NOTES", value: "No fever" });
+    s = editorReducer(s, { type: "DICTATE", text: "chest", final: false });
+    expect(s.rawNotes).toBe("No fever. chest");
+    s = editorReducer(s, { type: "DICTATE", text: "chest clear on", final: false });
+    expect(s.rawNotes).toBe("No fever. chest clear on");
+    s = editorReducer(s, { type: "DICTATE", text: "Chest clear on exam.", final: true });
+    expect(s.rawNotes).toBe("No fever. Chest clear on exam.");
+    expect(s.live).toBe("");
+  });
+
+  test("stopping mid-sentence keeps what was heard; typing over a partial makes it the doctor's", () => {
+    let s = editorReducer(initialEditorState("req-4"), { type: "DICTATE", text: "sore thr", final: false });
+    s = editorReducer(s, { type: "DICTATE", text: "", final: true });
+    expect(s.rawNotes).toBe("sore thr");
+    s = editorReducer(s, { type: "DICTATE", text: "fever", final: false });
+    s = editorReducer(s, { type: "SET_RAW_NOTES", value: "sore thr. fever x3d" });
+    s = editorReducer(s, { type: "DICTATE", text: "fever three days", final: false });
+    expect(s.rawNotes).toBe("sore thr. fever x3d. fever three days");
   });
 });

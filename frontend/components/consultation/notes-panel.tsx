@@ -10,8 +10,6 @@ import type { TranscriptionStatus } from "./use-transcription";
 
 export interface VoiceControls {
   status: TranscriptionStatus;
-  /** The sentence still being recognised; it is not in `value` yet. */
-  partial: string;
   error: string | null;
   startedAt: number | null;
   /** Mic tap for the level bars while recording. */
@@ -175,14 +173,12 @@ export function NotesPanel({
         className="relative h-full w-full resize-none bg-transparent px-6 py-3 text-[16px] leading-[1.8] text-ink outline-none placeholder:text-ink-4"
       />
       </div>
-      {/* The sentence still being recognised sits under the notes, never inside them, so typing and dictation cannot collide. */}
+      {/* Dictation lands in the textarea itself; this strip only reports the microphone. */}
       {recording ? (
-        <p id="voice-hint" className={`min-h-[2.5rem] border-t border-dashed border-line px-6 py-2 text-[14px] leading-[1.6] ${voice?.silent && !voice.partial ? "text-danger-700" : "text-ink-3 italic"}`} aria-live="polite">
-          {voice?.partial
-            ? voice.partial
-            : voice?.silent
-              ? `No sound is reaching the microphone${voice.device ? ` (${voice.device})` : ""}. Check that it is not muted, or pick another input in the browser's site settings.`
-              : `Listening${voice?.device ? ` on ${voice.device}` : ""}…`}
+        <p id="voice-hint" className={`border-t border-dashed border-line px-6 py-2 text-[12px] ${voice?.silent ? "text-danger-700" : "text-ink-3"}`} aria-live="polite">
+          {voice?.silent
+            ? `No sound is reaching the microphone${voice.device ? ` (${voice.device})` : ""}. Check that it is not muted, or pick another input in the browser's site settings.`
+            : `Listening${voice?.device ? ` on ${voice.device}` : ""}…`}
         </p>
       ) : voice?.error ? (
         <p id="voice-hint" role="alert" className="border-t border-line px-6 py-2 text-[12px] text-danger-700">
@@ -190,7 +186,7 @@ export function NotesPanel({
         </p>
       ) : voice ? (
         <span id="voice-hint" className="sr-only">
-          Dictate into the notes. Finished sentences are added as you speak.
+          Dictate into the notes. Words appear as you speak.
         </span>
       ) : null}
 

@@ -67,7 +67,7 @@ export function ConsultationWorkspace({
   const savedRef = useRef(false);
 
   const router = useGuardedRouter();
-  const voice = useTranscription({ onFinal: (text) => dispatch({ type: "APPEND_RAW_NOTES", text }) });
+  const voice = useTranscription({ onText: (text, final) => dispatch({ type: "DICTATE", text, final }) });
   const { pending, clear: clearPersisted, dismissPending } = useDraftPersistence(patient.id, appointmentId, state);
   useUnsavedGuard(state.dirty && !saving && !saved);
 
@@ -322,7 +322,7 @@ export function ConsultationWorkspace({
           activeSpan={activeSpan}
           voice={
             voiceEnabled
-              ? { status: voice.status, partial: voice.partial, error: voice.error, startedAt: voice.startedAt, analyser: voice.analyser, device: voice.device, silent: voice.silent, onToggle: () => (voice.status === "idle" ? voice.start() : voice.stop()) }
+              ? { status: voice.status, error: voice.error, startedAt: voice.startedAt, analyser: voice.analyser, device: voice.device, silent: voice.silent, onToggle: () => (voice.status === "idle" ? voice.start() : voice.stop()) }
               : undefined
           }
         />
