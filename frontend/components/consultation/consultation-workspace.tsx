@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SafeLink } from "@/components/shared/safe-link";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { structureConsultation, AI_CANCELLED } from "@/lib/api/ai";

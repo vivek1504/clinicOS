@@ -57,7 +57,8 @@ export function fieldErrors(schema: z.ZodType, data: unknown): FieldErrors | nul
 /** Moves focus to the first field that has an error, in the form's own order. */
 export function focusFirstError(form: HTMLFormElement | null, errors: FieldErrors) {
   if (!form) return;
-  for (const el of Array.from(form.querySelectorAll<HTMLElement>("input, select, textarea"))) {
+  // Select triggers are buttons carrying the field id.
+  for (const el of Array.from(form.querySelectorAll<HTMLElement>("input, select, textarea, button[id]"))) {
     const key = el.id || el.getAttribute("name") || "";
     if (errors[key]) {
       el.focus();

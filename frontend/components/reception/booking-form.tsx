@@ -2,13 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon, Calendar03Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SafeLink } from "@/components/shared/safe-link";
 import { createAppointment, getAppointments, rescheduleAppointment } from "@/lib/api/appointments";
-import { formatTime } from "@/lib/format";
+import { formatShortDate, formatTime } from "@/lib/format";
 import { ApiError } from "@/lib/api/client";
 import type { AppointmentDto, PatientDto } from "@/lib/api/types";
 import { bookingSchema, fieldErrors, focusFirstError, type FieldErrors } from "@/lib/forms";
@@ -16,6 +22,10 @@ import { bookingSchema, fieldErrors, focusFirstError, type FieldErrors } from "@
 const pad = (n: number) => String(n).padStart(2, "0");
 const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const localTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "short" });
+const MONTH = new Intl.DateTimeFormat("en-US", { month: "short" });
+/** Weeks the date strip pages through; anything later goes via the calendar. */
+const STRIP_WEEKS = 3;
 const SLOT_MIN = 15;
 // ponytail: fixed clinic hours; make these a setting when a clinic needs different ones.
 const CLINIC_OPEN = 8;
@@ -35,8 +45,8 @@ const defaultSlot = (d: Date) => {
   return localTime(x);
 };
 
-const SELECT =
-  "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-accent-500 focus-visible:ring-3 focus-visible:ring-accent-500/15 aria-invalid:border-danger-700";
+/** Select triggers sized and coloured like Input, so the form reads as one set of fields. */
+const TRIGGER = "w-full rounded-md border-line-strong bg-surface px-3 text-ink data-[size=default]:h-9 data-placeholder:text-ink-4";
 
 /** What the form holds while it is being filled in; the modal keeps it across steps so Back loses nothing. */
 export interface BookingDraft {
@@ -88,9 +98,55 @@ export function BookingForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dayRows, setDayRows] = useState<AppointmentDto[]>([]);
+  const [dateOpen, setDateOpen] = useState(false);
   const isToday = date === localDate(now);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const daysOut = date ? Math.floor((new Date(`${date}T12:00:00`).getTime() - today.getTime()) / 86_400_000) : -1;
+  const clear = (key: string) => setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
-  // First quarter-hour slot that day the doctor has not got yet, from now if today, from 09:00 otherwise.
+  // The strip shows one week at a time; `week` is the page (0 = today's), `dir` which way the last page turn slid.
+  const [[week, dir], setWeek] = useState<[number, 1 | -1]>([daysOut >= 0 ? Math.min(Math.floor(daysOut / 7), STRIP_WEEKS - 1) : 0, 1]);
+  const inStrip = daysOut >= week * 7 && daysOut < week * 7 + 7;
+  const pickDate = (d: Date) => {
+    setDate(localDate(d));
+    clear("date");
+    clear("time");
+    const days = Math.floor((d.getTime() - today.getTime()) / 86_400_000);
+    const page = Math.min(Math.floor(days / 7), STRIP_WEEKS - 1);
+    if (page !== week) setWeek([page, page > week ? 1 : -1]);
+  };
+  // Arrow keys move the date itself: a day sideways, a week up or down, within the strip. They work anywhere on the
+  // form or its modal, except while typing in a field or inside a dropdown or the calendar. Focus follows the tile.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const refocus = useRef(false);
+  const stepDate = (e: KeyboardEvent) => {
+    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+    if (!step || walkIn) return;
+    if ((e.target as Element | null)?.closest("input, textarea, [role=combobox], [role=listbox], [data-slot=popover-content], .rdp-root")) return;
+    e.preventDefault();
+    const d = new Date(`${date || localDate(today)}T12:00:00`);
+    d.setDate(d.getDate() + step);
+    if (d < today || Math.floor((d.getTime() - today.getTime()) / 86_400_000) >= STRIP_WEEKS * 7) return;
+    refocus.current = true;
+    pickDate(d);
+  };
+  const stepRef = useRef(stepDate);
+  useEffect(() => {
+    stepRef.current = stepDate;
+  });
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => stepRef.current(e);
+    // Capture phase: the modal stops keydown from bubbling, so a bubbling listener never hears it.
+    document.addEventListener("keydown", h, true);
+    return () => document.removeEventListener("keydown", h, true);
+  }, []);
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    stripRef.current?.querySelector<HTMLButtonElement>("[aria-checked=true]")?.focus();
+  }, [date]);
+
   // Who holds each quarter-hour slot that day; shown in the picker so the desk sees availability while choosing.
   const takenBy = new Map(dayRows.map((r) => [localTime(new Date(r.scheduledAt)), r.patient.name]));
   const taken = new Set(takenBy.keys());
@@ -103,17 +159,11 @@ export function BookingForm({
     return out.sort();
   })();
   const slotUnavailable = (t: string) => taken.has(t) || (isToday && t < earliestToday);
-  const nextFree = (() => {
-    const cursor = isToday ? nextSlot(now) : new Date(`${date}T09:00:00`);
-    for (let i = 0; i < 96; i++) {
-      const t = localTime(cursor);
-      if (!taken.has(t) && cursor.getHours() < 24) return t;
-      cursor.setMinutes(cursor.getMinutes() + SLOT_MIN);
-    }
-    return null;
-  })();
-
-  const clear = (key: string) => setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+  const slotLabel = (t: string) => `${formatTime(`${date}T${t}:00`)}${takenBy.has(t) ? ` · ${takenBy.get(t)}` : isToday && t < earliestToday ? " · passed" : ""}`;
+  const patientItems = patients.map((p) => ({ value: p.id, label: `${p.name} · ${p.phone}` }));
+  const timeItems = slots.map((t) => ({ value: t, label: slotLabel(t) }));
+  // First slot in clinic hours that is neither taken nor already behind us.
+  const nextFree = slots.find((t) => !slotUnavailable(t)) ?? null;
 
   // What the chosen doctor already has that day, so clashes are seen before submit, not after.
   useEffect(() => {
@@ -167,14 +217,25 @@ export function BookingForm({
       {existing || (patients.length === 1 && defaults.patientId) ? null : (
         <div className="grid gap-2">
           <Label htmlFor="patientId">Patient</Label>
-          <select id="patientId" value={patientId} aria-invalid={!!errors.patientId || undefined} aria-describedby={describe("patientId")} onChange={(e) => { setPatientId(e.target.value); clear("patientId"); }} className={SELECT}>
-            {patients.length === 0 ? <option value="">No patients registered yet</option> : null}
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.phone}
-              </option>
-            ))}
-          </select>
+          <Select
+            items={patientItems}
+            value={patientId}
+            onValueChange={(v) => {
+              setPatientId(v ?? "");
+              clear("patientId");
+            }}
+          >
+            <SelectTrigger id="patientId" aria-invalid={!!errors.patientId || undefined} aria-describedby={describe("patientId")} className={TRIGGER}>
+              <SelectValue placeholder={patients.length === 0 ? "No patients registered yet" : "Choose a patient"} />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              {patientItems.map((p) => (
+                <SelectItem key={p.value} value={p.value}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <FieldError id="patientId-error" message={errors.patientId} />
           {embedded ? null : (
             <p className="text-[12px] text-ink-3">
@@ -190,52 +251,118 @@ export function BookingForm({
       {existing || doctors.length === 1 ? null : (
         <div className="grid gap-2">
           <Label htmlFor="doctorId">Doctor</Label>
-          <select id="doctorId" value={doctorId} aria-invalid={!!errors.doctorId || undefined} aria-describedby={describe("doctorId")} onChange={(e) => { setDoctorId(e.target.value); clear("doctorId"); }} className={SELECT}>
-            {doctors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            items={doctors.map((d) => ({ value: d.id, label: d.name }))}
+            value={doctorId}
+            onValueChange={(v) => {
+              setDoctorId(v ?? "");
+              clear("doctorId");
+            }}
+          >
+            <SelectTrigger id="doctorId" aria-invalid={!!errors.doctorId || undefined} aria-describedby={describe("doctorId")} className={TRIGGER}>
+              <SelectValue placeholder="Choose a doctor" />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              {doctors.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <FieldError id="doctorId-error" message={errors.doctorId} />
         </div>
       )}
 
       {existing ? null : (
-        <label className="flex items-center gap-2.5 text-sm text-ink">
-          <input type="checkbox" checked={walkIn} onChange={(e) => { setWalkIn(e.target.checked); clear("time"); }} className="size-4 accent-accent-700" />
+        <Label className="flex items-center gap-2.5 font-normal text-ink">
+          <Checkbox
+            checked={walkIn}
+            onCheckedChange={(checked) => {
+              setWalkIn(checked === true);
+              clear("time");
+            }}
+          />
           Walk-in: the patient is here now, put them straight in the queue
-        </label>
+        </Label>
       )}
 
       {walkIn ? null : (
         <div className="grid gap-5 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" value={date} aria-invalid={!!errors.date || undefined} aria-describedby={describe("date")} onChange={(e) => { setDate(e.target.value); clear("date"); clear("time"); }} />
+          <div className="grid gap-2 sm:col-span-2">
+            <Label id="date-label">Date</Label>
+            {/* Three weeks as a strip, a week per page; the calendar behind the last button reaches any later day. Days before today cannot be picked at all; the server refuses them too. */}
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Previous week" disabled={week === 0} onClick={() => setWeek([week - 1, -1])}>
+                <HugeiconsIcon icon={ArrowLeft01Icon} />
+              </Button>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                {/* Re-keyed per page so the new week slides in from the side it came from. */}
+                <div key={week} ref={stripRef} role="radiogroup" aria-labelledby="date-label" aria-describedby={describe("date")} className={`grid grid-cols-7 gap-1 animate-in duration-300 ease-out ${dir > 0 ? "slide-in-from-right-1/2" : "slide-in-from-left-1/2"} fade-in`}>
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() + week * 7 + i);
+                    const v = localDate(d);
+                    const on = v === date;
+                    return (
+                      <button key={v} type="button" role="radio" aria-checked={on} tabIndex={on || (!inStrip && i === 0) ? 0 : -1} onClick={() => pickDate(d)} className={`flex flex-col items-center rounded-md py-1.5 text-[11px] font-medium uppercase transition-colors ${on ? "bg-accent-600 text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}>
+                        <span>{WEEKDAY.format(d)}</span>
+                        <span className={`text-lg leading-tight font-semibold ${on ? "" : "text-ink"}`}>{d.getDate()}</span>
+                        <span>{MONTH.format(d)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Next week" disabled={week >= STRIP_WEEKS - 1} onClick={() => setWeek([week + 1, 1])}>
+                <HugeiconsIcon icon={ArrowRight01Icon} />
+              </Button>
+              {week < STRIP_WEEKS - 1 && daysOut < STRIP_WEEKS * 7 ? null : (
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                  <PopoverTrigger aria-label="More dates" aria-invalid={!!errors.date || undefined} render={<Button type="button" variant="secondary" className={`h-auto shrink-0 flex-col gap-0 px-2 shadow-none ${inStrip ? "" : "border-accent-600 text-accent-700"}`} />}>
+                    <HugeiconsIcon icon={Calendar03Icon} />
+                    <span className="text-[11px]">{inStrip ? "More" : formatShortDate(new Date(`${date}T12:00:00`))}</span>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={date ? new Date(`${date}T12:00:00`) : undefined}
+                      defaultMonth={date ? new Date(`${date}T12:00:00`) : today}
+                      disabled={{ before: today }}
+                      onSelect={(d) => {
+                        if (!d) return;
+                        pickDate(d);
+                        setDateOpen(false);
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
             <FieldError id="date-error" message={errors.date} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="time">Time</Label>
-            {/* A list of slots, not a free-form time: the native picker ignores its step, and a taken or past slot cannot be chosen at all. */}
-            <select
-              id="time"
-              value={slotUnavailable(time) ? "" : time}
-              aria-invalid={!!errors.time || undefined}
-              aria-describedby={describe("time")}
-              onChange={(e) => { setTime(e.target.value); clear("time"); }}
-              className={SELECT}
+            {/* A list of slots, not a free-form time: a taken or past slot cannot be chosen at all. */}
+            <Select
+              items={timeItems}
+              value={slotUnavailable(time) ? null : time}
+              onValueChange={(v) => {
+                setTime(v ?? "");
+                clear("time");
+              }}
             >
-              <option value="" disabled>
-                Choose a slot
-              </option>
-              {slots.map((t) => (
-                <option key={t} value={t} disabled={slotUnavailable(t)}>
-                  {formatTime(`${date}T${t}:00`)}
-                  {takenBy.has(t) ? ` · ${takenBy.get(t)}` : isToday && t < earliestToday ? " · passed" : ""}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="time" aria-invalid={!!errors.time || undefined} aria-describedby={describe("time")} className={TRIGGER}>
+                <SelectValue placeholder="Choose a slot" />
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                {slots.map((t) => (
+                  <SelectItem key={t} value={t} disabled={slotUnavailable(t)}>
+                    {slotLabel(t)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FieldError id="time-error" message={errors.time} />
           </div>
         </div>
@@ -246,7 +373,14 @@ export function BookingForm({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="eyebrow">Already booked that day</p>
             {nextFree ? (
-              <button type="button" onClick={() => { setTime(nextFree); clear("time"); }} className="text-[12px] font-medium text-accent-700 underline-offset-2 hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  setTime(nextFree);
+                  clear("time");
+                }}
+                className="text-[12px] font-medium text-accent-700 underline-offset-2 hover:underline"
+              >
                 Next free slot {formatTime(`${date}T${nextFree}:00`)}
               </button>
             ) : null}
@@ -268,7 +402,18 @@ export function BookingForm({
 
       <div className="grid gap-2">
         <Label htmlFor="reason">Reason for visit</Label>
-        <Input id="reason" maxLength={300} value={reason} placeholder="e.g. Follow-up on blood pressure" aria-invalid={!!errors.reason || undefined} aria-describedby={describe("reason")} onChange={(e) => { setReason(e.target.value); clear("reason"); }} />
+        <Input
+          id="reason"
+          maxLength={300}
+          value={reason}
+          placeholder="e.g. Follow-up on blood pressure"
+          aria-invalid={!!errors.reason || undefined}
+          aria-describedby={describe("reason")}
+          onChange={(e) => {
+            setReason(e.target.value);
+            clear("reason");
+          }}
+        />
         <FieldError id="reason-error" message={errors.reason} />
       </div>
 

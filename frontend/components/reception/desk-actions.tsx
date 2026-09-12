@@ -4,7 +4,8 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { SPRING_QUICK } from "@/components/shared/reveal";
 import { useRouter } from "next/navigation";
-import { CalendarPlusIcon, UserPlusIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CalendarAdd01Icon, UserAdd01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import type { AppointmentDto, PatientDto } from "@/lib/api/types";
@@ -69,7 +70,7 @@ export function DeskActions({
     <>
       <div className="flex flex-wrap gap-2">
         <Button size="lg" variant="secondary" onClick={() => setModal("register")}>
-          <UserPlusIcon />
+          <HugeiconsIcon icon={UserAdd01Icon} />
           Register patient
         </Button>
         <Button
@@ -81,7 +82,7 @@ export function DeskActions({
             setModal("book");
           }}
         >
-          <CalendarPlusIcon />
+          <HugeiconsIcon icon={CalendarAdd01Icon} />
           Book appointment
         </Button>
       </div>

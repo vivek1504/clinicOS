@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PencilIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PencilEdit01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import type { PatientDto } from "@/lib/api/types";
@@ -16,7 +17,7 @@ export function EditPatient({ patient }: { patient: PatientDto }) {
   return (
     <>
       <Button size="lg" variant="secondary" onClick={() => setOpen(true)}>
-        <PencilIcon />
+        <HugeiconsIcon icon={PencilEdit01Icon} />
         Edit details
       </Button>
       <Modal open={open} title="Edit details" description="Demographics, contact, allergies and known conditions." onClose={close}>

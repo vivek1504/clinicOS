@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlusIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CalendarAdd01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import type { PatientDto } from "@/lib/api/types";
@@ -17,7 +18,7 @@ export function BookForPatient({ patient, doctors }: { patient: PatientDto; doct
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}>
-        <CalendarPlusIcon />
+        <HugeiconsIcon icon={CalendarAdd01Icon} />
         Book appointment
       </Button>
       <Modal open={open} title="Book appointment" description={`For ${patient.name}. Times stay as booked; the doctor sees patients in check-in order.`} onClose={close}>

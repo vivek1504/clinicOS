@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
-import { XIcon } from "lucide-react";
-import { Button } from "./button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
 
-/** Native <dialog> for a form: focus trap, Esc, inert background and the same enter/leave motion as ConfirmDialog. */
+/** A form in a dialog. Keeps the old `open`/`onClose` API; the shadcn Dialog underneath handles focus, Esc and the backdrop. */
 export function Modal({
   open,
   title,
@@ -18,57 +16,16 @@ export function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (open) {
-      delete el.dataset.closing;
-      if (!el.open) el.showModal();
-      return;
-    }
-    if (!el.open) return;
-    el.dataset.closing = "";
-    const done = () => {
-      delete el.dataset.closing;
-      if (el.open) el.close();
-    };
-    el.addEventListener("animationend", done, { once: true });
-    const fallback = setTimeout(done, 240);
-    return () => {
-      clearTimeout(fallback);
-      el.removeEventListener("animationend", done);
-    };
-  }, [open]);
-
   return (
-    <dialog
-      ref={ref}
-      aria-labelledby={titleId}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      onClick={(e) => {
-        if (e.target === ref.current) onClose();
-      }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[600px] overflow-y-auto rounded-xl bg-surface p-0 text-ink shadow-3 outline-none"
-    >
-      <div className="flex items-start justify-between gap-4 px-6 pt-6">
-        <div>
-          <h2 id={titleId} className="display text-[26px] leading-none text-ink">
-            {title}
-          </h2>
-          {description ? <p className="mt-1.5 text-[13px] text-ink-3">{description}</p> : null}
-        </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose} className="-mr-2 -mt-1 text-ink-3">
-          <XIcon />
-        </Button>
-      </div>
-      {/* Unmount while closed so a reopened form starts clean. */}
-      <div className="px-6 pt-5 pb-6">{open ? children : null}</div>
-    </dialog>
+    <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto bg-surface p-6 text-ink sm:max-w-[600px]">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="display text-[26px] leading-none font-normal text-ink">{title}</DialogTitle>
+          {description ? <DialogDescription className="text-[13px] text-ink-3">{description}</DialogDescription> : null}
+        </DialogHeader>
+        {/* Unmount while closed so a reopened form starts clean. */}
+        <div className="pt-5">{open ? children : null}</div>
+      </DialogContent>
+    </Dialog>
   );
 }

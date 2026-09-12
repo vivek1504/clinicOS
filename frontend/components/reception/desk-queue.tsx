@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, CalendarXIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, Calendar03Icon, CalendarRemove01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SafeLink } from "@/components/shared/safe-link";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -75,17 +76,17 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-md bg-surface shadow-1">
             <Button variant="ghost" size="icon-sm" className="rounded-r-none" aria-label="Previous day" onClick={() => goTo(shiftDate(date, -1))}>
-              <ChevronLeftIcon />
+              <HugeiconsIcon icon={ArrowLeft01Icon} />
             </Button>
             <div className="relative">
               <span aria-hidden="true" className="inline-flex h-8 items-center gap-2 border-x border-line px-3 text-[13px] font-medium num text-ink">
-                <CalendarIcon className="size-3.5 text-ink-3" />
+                <HugeiconsIcon icon={Calendar03Icon} className="size-3.5 text-ink-3" />
                 {formatShortDate(new Date(`${date}T12:00:00`))}
               </span>
               <input type="date" value={date} onChange={(e) => e.target.value && goTo(e.target.value)} aria-label="Schedule date" className="absolute inset-0 cursor-pointer opacity-0 focus-visible:opacity-100" />
             </div>
             <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Next day" onClick={() => goTo(shiftDate(date, 1))}>
-              <ChevronRightIcon />
+              <HugeiconsIcon icon={ArrowRight01Icon} />
             </Button>
           </div>
           {isToday ? null : (
@@ -102,7 +103,7 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
       <div className="panel">
         {rows.length === 0 ? (
           <EmptyState
-            icon={<CalendarXIcon className="size-5" aria-hidden="true" />}
+            icon={<HugeiconsIcon icon={CalendarRemove01Icon} className="size-5" aria-hidden="true" />}
             title="No appointments on this day"
             body="Book the first one, or pick another date."
             action={
@@ -165,7 +166,7 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
                           className="inline-flex h-8 cursor-pointer list-none items-center gap-1 rounded-md px-2.5 text-[13px] font-medium text-ink-2 transition-colors hover:bg-ink/6 hover:text-ink [&::-webkit-details-marker]:hidden"
                         >
                           More
-                          <ChevronDownIcon className="size-3.5" aria-hidden="true" />
+                          <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" aria-hidden="true" />
                         </summary>
                         <div className="panel absolute right-0 z-20 mt-1 flex w-48 flex-col p-1 shadow-2">
                           {a.status !== "NO_SHOW" ? (
