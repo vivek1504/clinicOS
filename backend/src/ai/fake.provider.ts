@@ -63,20 +63,17 @@ export class FakeAiProvider implements AiProvider {
     if (lower.includes("diabetes") || lower.includes("t2d")) history.push("type 2 diabetes");
     if (lower.includes("hypertension") || lower.includes("htn")) history.push("hypertension");
 
+    // Same contract as the real prompt: a plan only exists if the notes state one. Nothing is inferred.
     const plan: string[] = [];
-    if (lower.includes("rest")) plan.push("rest and hydration");
-    if (meds.length > 0) plan.push(`continue ${meds.join(", ")}`);
-    if (plan.length === 0) plan.push("monitor symptoms, return if condition worsens");
+    if (lower.includes("rest")) plan.push("rest");
+    if (lower.includes("follow up") || lower.includes("follow-up")) plan.push("follow up");
 
     const missing: string[] = [];
     if (!lower.includes("bp") && !lower.includes("blood pressure")) missing.push("blood pressure");
     if (!lower.includes("temp") && !lower.includes("temperature")) missing.push("temperature");
     if (!lower.includes("allerg")) missing.push("allergies inquiry");
 
-    let chiefComplaint = symptoms.length > 0 ? symptoms[0]! : "General consultation";
-    if (rawNotes.trim().length === 0) {
-      chiefComplaint = "Unspecified";
-    }
+    const chiefComplaint = symptoms[0] ?? null;
 
     return {
       chiefComplaint,

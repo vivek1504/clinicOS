@@ -1,4 +1,4 @@
 {
   "bunVersion": "1.4.x",
-  "buildCommand": "DATABASE_URL=\"$DIRECT_URL\" bunx prisma migrate deploy && DATABASE_URL=\"$DIRECT_URL\" bun prisma/ensure-staff.ts"
+  "buildCommand": "if [ \"$VERCEL_ENV\" = production ]; then DATABASE_URL=\"$DIRECT_URL\" bunx prisma migrate deploy && DATABASE_URL=\"$DIRECT_URL\" bun prisma/ensure-staff.ts; else echo 'Preview: skipping migrations'; fi"
 }

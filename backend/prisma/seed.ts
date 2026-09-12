@@ -32,7 +32,7 @@ async function seed() {
 
     // 1. Staff (doctor + receptionist), shared with the deploy-time script
     const passwordHash = await Bun.password.hash("pass123");
-    await upsertStaff(tx, passwordHash);
+    await upsertStaff(tx, passwordHash, { resetPassword: true });
 
     // 2. Patients
     const patients = [

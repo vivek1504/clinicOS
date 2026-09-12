@@ -125,11 +125,12 @@ ClinicOS uses a decoupled full-stack architecture running on the **Bun** runtime
 ## Key Features
 
 - **Two roles, enforced server-side**: Every signed-in user carries a `DOCTOR` or `RECEPTIONIST` role. Consultations, patient history and every AI endpoint answer `403 FORBIDDEN` to the front desk; only a doctor can put a patient in the room or complete a visit; only the front desk can mark someone absent. The frontend redirects each role to its own home.
+- **Ownership on top of roles**: Patient records are clinic-wide: any doctor can read any patient's history and run AI over it, because a covering doctor needs the record. Appointments and consultations have an owner. A doctor can only start, finish, reschedule or save a consultation against an appointment booked with them (`403`), and can only edit a consultation they wrote (`404`, so the record's existence is not revealed). The front desk works every doctor's schedule. Sign-in locks an email for 15 minutes after ten failed attempts (`429`).
 - **Appointment states and queue rules**: `BOOKED → WAITING → IN_CONSULTATION → COMPLETED`, plus `NO_SHOW` and `CANCELLED`. A doctor can have one patient in the room, and a checked-in patient starts only when everyone checked in earlier is done. Both rules are enforced by the backend, the first one race-safely by a partial unique index, and surfaced in the UI as disabled actions with a reason.
 - **Front desk workflow**: Register patients (one record per phone number; a match points to the existing patient), book and reschedule (past times and double-booked slots are refused), check in, mark absent, restore, cancel with confirmation.
 - **Clinician-in-the-Loop Provenance**: Every field and list item maintains an explicit `source: "ai" | "doctor"` tag. AI-drafted items sit on a muted iris tint; editing one flips it to doctor styling ("Doctor edited"). The provenance is also announced to screen readers.
 - **Draft safety**: Regenerating keeps the previous draft one click away. Saving with an empty structured note asks first, so a notes-only visit is a choice, not an accident. A same-tab reload restores the draft without a prompt.
-- **Idempotent Consultations**: The consultation editor mints a unique `clientRequestId` per session. Network retries, double-clicks, or crash restores resolve idempotently to the same database record.
+- **Idempotent Consultations**: The consultation editor mints a unique `clientRequestId` per session. Network retries, double-clicks, or crash restores resolve idempotently to the same database record, including two identical requests arriving at once (the unique index decides, the loser is served the winner's row). The same key with different content is refused with `409`. AI provenance (`wasAiUsed`, model, latency) is derived from the attached draft, never taken from the client.
 - **Resilient Unsaved-Changes Guard**: In-flight consultation notes mirror continuously to `sessionStorage`. Route changes trigger custom modal confirmations, and page unloads trigger browser guards. If a session expires or a tab crashes, drafting progress can be restored with a single click.
 - **Voice dictation**: A **Record** button in the notes panel streams the doctor's speech to AssemblyAI straight from the browser and drops each finished sentence into the notes; the sentence still being recognised shows beneath the notes so it never overwrites typing. The backend only mints a short-lived token. Hidden entirely when no key is configured.
 - **Longitudinal History Summarizer**: Synthesizes past visits into concise 2-4 sentence clinical summaries (`POST /ai/patient-summary`) strictly grounded in previously saved notes.
@@ -235,6 +236,7 @@ The frontend will be running on `http://localhost:3000`.
 | `AI_MODEL` | OpenRouter model identifier (any chat model, e.g. `openai/gpt-4o-mini`) | `openai/gpt-4o-mini` |
 | `AI_TIMEOUT_MS` | Upstream AI request timeout in milliseconds | `20000` |
 | `ASSEMBLYAI_API_KEY` | AssemblyAI key for voice dictation (optional; blank hides Record) | `""` |
+| `STAFF_PASSWORD` | Password given to the two staff accounts when a deploy first creates them; existing passwords are never reset | `pass123` |
 | `CLINIC_TZ` | Clinic timezone for "today", day ranges and slots; the process `TZ` is set from it at startup | `Asia/Kolkata` |
 | `PORT` | API server port | `3001` |
 | `CORS_ORIGIN` | Allowed cross-origin source | `http://localhost:3000` |
@@ -368,7 +370,7 @@ Production runs on Vercel as two projects from the same repository, connected to
 | `frontend` | `frontend` | Next.js. Needs `API_URL` pointing at the backend's production URL. `instrumentation.ts` sets the process timezone from `CLINIC_TZ` (default Asia/Kolkata) so "today" is not the UTC day. |
 | `backend` | `backend` | Bun runtime (`vercel.json` pins `bunVersion`). Needs `DATABASE_URL` (pooled), `DIRECT_URL` (direct, for migrations), `OPENROUTER_API_KEY`, `AI_PROVIDER`, `AI_MODEL`, `CORS_ORIGIN`, and `ASSEMBLYAI_API_KEY` if dictation should be on. `CLINIC_TZ` is optional and defaults to Asia/Kolkata. |
 
-The backend's build command runs `prisma migrate deploy` over `DIRECT_URL` and then `prisma/ensure-staff.ts`, so every deploy applies pending migrations and guarantees the two demo accounts exist. It never touches patients, appointments or consultations. If a migration fails, the build fails and the previous deployment stays live.
+On production deploys only (`VERCEL_ENV=production`), the backend's build command runs `prisma migrate deploy` over `DIRECT_URL` and then `prisma/ensure-staff.ts`, which creates the two staff accounts if they are missing and otherwise leaves them alone, password included. It never touches patients, appointments or consultations. If a migration fails, the build fails and the previous deployment stays live.
 
 > [!NOTE]
-> Preview deployments share the production environment variables in this setup, so a preview build migrates the production database too. Add a separate database before using previews for schema work.
+> Preview builds skip migrations and staff provisioning, so a branch can never migrate the production database. A preview that needs a schema change must run against its own database.
