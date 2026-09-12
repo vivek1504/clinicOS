@@ -1,4 +1,5 @@
 import { prisma } from "../../src/lib/prisma";
+import { resetSignInThrottle } from "../../src/services/auth.service";
 
 export const TEST_PASSWORD = "correct horse";
 export const TEST_SESSION = "test-session-token";
@@ -9,6 +10,7 @@ export const authed = { cookie: `session=${TEST_SESSION}` };
 export const authedReception = { cookie: `session=${TEST_RECEPTION_SESSION}` };
 
 export async function resetTestDb() {
+  resetSignInThrottle();
   // Truncate tables in reverse dependency order or CASCADE
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE "Session", "Consultation", "Appointment", "Patient", "User" CASCADE;

@@ -28,8 +28,9 @@ import { useUnsavedGuard } from "./use-unsaved-guard";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-/** Details the backend attaches to ALREADY_IN_CONSULTATION and QUEUE_ORDER, plus its one-line reason. */
+/** Details the backend attaches to ALREADY_IN_CONSULTATION and QUEUE_ORDER, plus its one-line reason. FORBIDDEN carries only the reason. */
 interface Blocker {
+  code: string;
   appointmentId?: string;
   patientId?: string;
   patientName?: string;
@@ -90,8 +91,8 @@ export function ConsultationWorkspace({
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err instanceof ApiError && (err.code === "ALREADY_IN_CONSULTATION" || err.code === "QUEUE_ORDER")) {
-          setBlockedBy({ ...(err.details as Omit<Blocker, "message"> | undefined), message: err.message });
+        if (err instanceof ApiError && (err.code === "ALREADY_IN_CONSULTATION" || err.code === "QUEUE_ORDER" || err.code === "FORBIDDEN")) {
+          setBlockedBy({ ...(err.details as Partial<Blocker> | undefined), code: err.code, message: err.message });
         }
         // Any other failure is not the doctor's problem.
       });
@@ -263,7 +264,7 @@ export function ConsultationWorkspace({
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-wait-100 px-4 py-3 text-[13px] text-ink">
           <span>
             <span className="font-medium">{blockedBy.message}.</span>{" "}
-            <span className="text-ink-2">Finish their consultation first. Saving is disabled here until then.</span>
+            <span className="text-ink-2">{blockedBy.code === "FORBIDDEN" ? "Only that doctor can record this visit. Saving is disabled here." : "Finish their consultation first. Saving is disabled here until then."}</span>
           </span>
           {blockedBy.patientId && blockedBy.appointmentId ? (
             <Button
