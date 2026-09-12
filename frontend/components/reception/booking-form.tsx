@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
+import { SPRING_QUICK } from "@/components/shared/reveal";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, ArrowRight01Icon, Calendar03Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,7 +82,7 @@ export function BookingForm({
   doctors: { id: string; name: string }[];
   defaults: { patientId?: string; date: string; walkIn: boolean };
   existing: AppointmentDto | null;
-  /** Inside a modal: no card chrome, a Back button the caller controls, and the caller decides what happens after. */
+  /** Inside a modal: no card chrome, no Back unless `onBack` names a previous step, and the caller decides what happens after. */
   embedded?: boolean;
   onBack?: () => void;
   onDone?: () => void;
@@ -90,6 +91,7 @@ export function BookingForm({
   onDraftChange?: (draft: BookingDraft) => void;
 }) {
   const router = useRouter();
+  const reduce = useReducedMotion();
   const formRef = useRef<HTMLFormElement>(null);
   const now = new Date();
   const start = existing ? new Date(existing.scheduledAt) : null;
@@ -305,145 +307,166 @@ export function BookingForm({
         </div>
       )}
 
-      {existing ? null : (
-        <Label className="flex items-center gap-2.5 font-normal text-ink">
-          <Checkbox
-            checked={walkIn}
-            onCheckedChange={(checked) => {
-              setWalkIn(checked === true);
-              clear("time");
-            }}
-          />
-          Walk-in: the patient is here now, put them straight in the queue
-        </Label>
-      )}
-
-      {walkIn ? null : (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="grid gap-2 sm:col-span-2">
-            <Label id="date-label">Date</Label>
-            {/* Three weeks as a strip, a week per page; the calendar behind the last button reaches any later day. Days before today cannot be picked at all; the server refuses them too. */}
-            <div className="flex items-center gap-1">
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Previous week" disabled={week === 0} onClick={() => setWeek([week - 1, -1])}>
-                <HugeiconsIcon icon={ArrowLeft01Icon} />
-              </Button>
-              <div className="min-w-0 flex-1 overflow-hidden">
-                {/* Re-keyed per page so the new week slides in from the side it came from. */}
-                <div key={week} ref={stripRef} role="radiogroup" aria-labelledby="date-label" aria-describedby={describe("date")} className={`grid grid-cols-7 gap-1 animate-in duration-300 ease-out ${dir > 0 ? "slide-in-from-right-1/2" : "slide-in-from-left-1/2"} fade-in`}>
-                  {Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date(today);
-                    d.setDate(d.getDate() + week * 7 + i);
-                    const v = localDate(d);
-                    const on = v === date;
-                    return (
-                      <button key={v} type="button" role="radio" aria-checked={on} tabIndex={on || (!inStrip && i === 0) ? 0 : -1} onClick={() => pickDate(d)} className={`flex flex-col items-center rounded-md py-1.5 text-[11px] font-medium uppercase transition-colors ${on ? "bg-accent-600 text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}>
-                        <span>{WEEKDAY.format(d)}</span>
-                        <span className={`text-lg leading-tight font-semibold ${on ? "" : "text-ink"}`}>{d.getDate()}</span>
-                        <span>{MONTH.format(d)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Next week" disabled={week >= STRIP_WEEKS - 1} onClick={() => setWeek([week + 1, 1])}>
-                <HugeiconsIcon icon={ArrowRight01Icon} />
-              </Button>
-              {week < STRIP_WEEKS - 1 && daysOut < STRIP_WEEKS * 7 ? null : (
-                <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                  <PopoverTrigger aria-label="More dates" aria-invalid={!!errors.date || undefined} render={<Button type="button" variant="secondary" className={`h-auto shrink-0 flex-col gap-0 px-2 shadow-none ${inStrip ? "" : "border-accent-600 text-accent-700"}`} />}>
-                    <HugeiconsIcon icon={Calendar03Icon} />
-                    <span className="text-[11px]">{inStrip ? "More" : formatShortDate(new Date(`${date}T12:00:00`))}</span>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={date ? new Date(`${date}T12:00:00`) : undefined}
-                      defaultMonth={date ? new Date(`${date}T12:00:00`) : today}
-                      disabled={{ before: today }}
-                      onSelect={(d) => {
-                        if (!d) return;
-                        pickDate(d);
-                        setDateOpen(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              )}
-            </div>
-            <FieldError id="date-error" message={errors.date} />
-          </div>
-          <div className="grid gap-2 sm:col-span-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label id="time-label">Time</Label>
-              {nextFree ? (
-                <button type="button" onClick={() => pickSlot(nextFree)} className="text-[12px] font-medium text-accent-700 underline-offset-2 hover:underline">
-                  Next free slot {formatTime(`${date}T${nextFree}:00`)}
-                </button>
-              ) : null}
-            </div>
-            <div role="tablist" aria-label="Part of the day" className="flex gap-1 rounded-md bg-surface-2 p-1">
-              {PERIODS.map((p, i) => (
+      <div>
+        {existing ? null : (
+          <div className="grid gap-2">
+            <Label id="kind-label">Appointment type</Label>
+            {/* Scheduled needs a date and time; a walk-in is here now and goes straight into the queue. */}
+            <div role="radiogroup" aria-labelledby="kind-label" className="flex gap-1 rounded-md bg-surface-2 p-1">
+              {([["Scheduled", false], ["Walk-in", true]] as const).map(([label, value]) => (
                 <button
-                  key={p.label}
+                  key={label}
                   type="button"
-                  role="tab"
-                  aria-selected={i === pane}
-                  onClick={() => setPanePick(i)}
-                  className={`flex-1 rounded-[5px] py-1 text-[12px] font-medium transition-colors ${i === pane ? "bg-surface text-ink shadow-xs" : "text-ink-3 hover:text-ink"}`}
+                  role="radio"
+                  aria-checked={walkIn === value}
+                  onClick={() => {
+                    setWalkIn(value);
+                    clear("time");
+                  }}
+                  className={`flex-1 rounded-[5px] py-1 text-[12px] font-medium transition-colors ${walkIn === value ? "bg-surface text-ink shadow-xs" : "text-ink-3 hover:text-ink"}`}
                 >
-                  {p.label}
+                  {label}
                 </button>
               ))}
             </div>
-            {/* One row per hour, a tile per quarter hour. Taken tiles carry the patient's name and passed ones are struck through; neither can be chosen. */}
-            <div
-              id="time-grid"
-              ref={gridRef}
-              role="radiogroup"
-              aria-labelledby="time-label"
-              aria-invalid={!!errors.time || undefined}
-              aria-describedby={describe("time")}
-              onKeyDown={stepSlot}
-              className="grid gap-1"
-            >
-              {[...hourRows].map(([hour, times]) => (
-                <div key={hour} className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] items-center gap-1">
-                  <span className="num text-[11px] font-medium uppercase text-ink-3">{formatTime(`${date}T${hour}:00:00`).replace(":00", "")}</span>
-                  {times.map((t) => {
-                    const on = t === pickedSlot;
-                    const holder = takenBy.get(t);
-                    const passed = !holder && isToday && t < earliestToday;
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        disabled={!!holder || passed}
-                        title={slotLabel(t)}
-                        tabIndex={on || (!pickedSlot && t === nextFree) ? 0 : -1}
-                        onClick={() => pickSlot(t)}
-                        className={`num h-8 truncate rounded-md px-1.5 text-[12px] transition-colors ${
-                          on
-                            ? "bg-accent-600 font-semibold text-white"
-                            : holder
-                              ? "text-ink-4"
-                              : passed
-                                ? "text-ink-4 line-through"
-                                : "bg-surface-2 text-ink hover:bg-accent-100"
-                        }`}
-                      >
-                        {holder ?? formatTime(`${date}T${t}:00`).replace(/ [AP]M$/, "")}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-            <FieldError id="time-error" message={errors.time} />
           </div>
-        </div>
-      )}
+        )}
+        {/* Date and time fold away for a walk-in rather than vanishing, so the modal resizes smoothly. Inert while folded so nothing hidden can take focus. */}
+        <motion.div
+          initial={false}
+          animate={{ height: walkIn ? 0 : "auto", opacity: walkIn ? 0 : 1 }}
+          transition={reduce ? { duration: 0 } : { duration: 0.22, ease: "easeOut" }}
+          inert={walkIn}
+          className="overflow-hidden"
+        >
+          <div className={`-m-0.5 grid gap-5 p-0.5 sm:grid-cols-2 ${existing ? "" : "pt-5"}`}>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label id="date-label">Date</Label>
+              {/* Three weeks as a strip, a week per page; the calendar behind the last button reaches any later day. Days before today cannot be picked at all; the server refuses them too. */}
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="ghost" size="icon-sm" aria-label="Previous week" disabled={week === 0} onClick={() => setWeek([week - 1, -1])}>
+                  <HugeiconsIcon icon={ArrowLeft01Icon} />
+                </Button>
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  {/* Re-keyed per page so the new week slides in from the side it came from. */}
+                  <div key={week} ref={stripRef} role="radiogroup" aria-labelledby="date-label" aria-describedby={describe("date")} className={`grid grid-cols-7 gap-1 animate-in duration-300 ease-out ${dir > 0 ? "slide-in-from-right-1/2" : "slide-in-from-left-1/2"} fade-in`}>
+                    {Array.from({ length: 7 }, (_, i) => {
+                      const d = new Date(today);
+                      d.setDate(d.getDate() + week * 7 + i);
+                      const v = localDate(d);
+                      const on = v === date;
+                      return (
+                        <button key={v} type="button" role="radio" aria-checked={on} tabIndex={on || (!inStrip && i === 0) ? 0 : -1} onClick={() => pickDate(d)} className={`flex flex-col items-center rounded-md py-1.5 text-[11px] font-medium uppercase transition-colors ${on ? "bg-accent-600 text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}>
+                          <span>{WEEKDAY.format(d)}</span>
+                          <span className={`text-lg leading-tight font-semibold ${on ? "" : "text-ink"}`}>{d.getDate()}</span>
+                          <span>{MONTH.format(d)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label="Next week" disabled={week >= STRIP_WEEKS - 1} onClick={() => setWeek([week + 1, 1])}>
+                  <HugeiconsIcon icon={ArrowRight01Icon} />
+                </Button>
+                {week < STRIP_WEEKS - 1 && daysOut < STRIP_WEEKS * 7 ? null : (
+                  <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                    <PopoverTrigger aria-label="More dates" aria-invalid={!!errors.date || undefined} render={<Button type="button" variant="secondary" className={`h-auto shrink-0 flex-col gap-0 px-2 shadow-none ${inStrip ? "" : "border-accent-600 text-accent-700"}`} />}>
+                      <HugeiconsIcon icon={Calendar03Icon} />
+                      <span className="text-[11px]">{inStrip ? "More" : formatShortDate(new Date(`${date}T12:00:00`))}</span>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={date ? new Date(`${date}T12:00:00`) : undefined}
+                        defaultMonth={date ? new Date(`${date}T12:00:00`) : today}
+                        disabled={{ before: today }}
+                        onSelect={(d) => {
+                          if (!d) return;
+                          pickDate(d);
+                          setDateOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+              <FieldError id="date-error" message={errors.date} />
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label id="time-label">Time</Label>
+                {nextFree ? (
+                  <button type="button" onClick={() => pickSlot(nextFree)} className="text-[12px] font-medium text-accent-700 underline-offset-2 hover:underline">
+                    Next free slot {formatTime(`${date}T${nextFree}:00`)}
+                  </button>
+                ) : null}
+              </div>
+              <div role="tablist" aria-label="Part of the day" className="flex gap-1 rounded-md bg-surface-2 p-1">
+                {PERIODS.map((p, i) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={i === pane}
+                    onClick={() => setPanePick(i)}
+                    className={`relative flex-1 rounded-[5px] py-1 text-[12px] font-medium transition-colors ${i === pane ? "text-ink" : "text-ink-3 hover:text-ink"}`}
+                  >
+                    {/* One pill shared by whichever tab is open; motion slides it over when the tab changes. */}
+                    {i === pane ? <motion.span layoutId="pane-pill" transition={reduce ? { duration: 0 } : SPRING_QUICK} className="absolute inset-0 rounded-[5px] bg-surface shadow-xs" /> : null}
+                    <span className="relative">{p.label}</span>
+                  </button>
+                ))}
+              </div>
+              {/* One row per hour, a tile per quarter hour. Taken tiles carry the patient's name and passed ones are struck through; neither can be chosen. */}
+              <div
+                id="time-grid"
+                ref={gridRef}
+                role="radiogroup"
+                aria-labelledby="time-label"
+                aria-invalid={!!errors.time || undefined}
+                aria-describedby={describe("time")}
+                onKeyDown={stepSlot}
+                className="grid gap-1"
+              >
+                {[...hourRows].map(([hour, times]) => (
+                  <div key={hour} className="grid grid-cols-[2.75rem_repeat(4,minmax(0,1fr))] items-center gap-1">
+                    <span className="num text-[11px] font-medium uppercase text-ink-3">{formatTime(`${date}T${hour}:00:00`).replace(":00", "")}</span>
+                    {times.map((t) => {
+                      const on = t === pickedSlot;
+                      const holder = takenBy.get(t);
+                      const passed = !holder && isToday && t < earliestToday;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          disabled={!!holder || passed}
+                          title={slotLabel(t)}
+                          tabIndex={on || (!pickedSlot && t === nextFree) ? 0 : -1}
+                          onClick={() => pickSlot(t)}
+                          className={`num h-8 truncate rounded-md px-1.5 text-[12px] transition-colors ${
+                            on
+                              ? "bg-accent-600 font-semibold text-white"
+                              : holder
+                                ? "bg-surface-2 text-ink-4"
+                                : passed
+                                  ? "text-ink-4 line-through"
+                                  : "border border-line-strong bg-surface text-ink hover:border-accent-600 hover:bg-accent-100"
+                          }`}
+                        >
+                          {holder ?? formatTime(`${date}T${t}:00`).replace(/ [AP]M$/, "")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              <FieldError id="time-error" message={errors.time} />
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
       <div className="grid gap-2">
         <Label htmlFor="reason">Reason for visit</Label>
@@ -469,11 +492,12 @@ export function BookingForm({
       ) : null}
 
       <div className="flex flex-wrap justify-end gap-2">
+        {/* Back only when there is a step behind this one; a modal's close button and Esc cover cancelling. */}
         {onBack ? (
           <Button type="button" variant="ghost" onClick={onBack}>
             Back
           </Button>
-        ) : (
+        ) : embedded ? null : (
           <Button type="button" variant="ghost" render={<SafeLink href={`/front-desk?date=${defaults.date}`} />}>
             Back
           </Button>

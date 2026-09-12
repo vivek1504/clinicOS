@@ -36,7 +36,7 @@ export default async function BookPage({
       <div>
         <h1 className="display text-[34px] text-ink">{existing ? "Reschedule" : walkIn ? "Walk-in" : "Book appointment"}</h1>
         <p className="mt-1.5 text-[14px] text-ink-3">
-          {existing ? `${existing.patient.name} with ${existing.doctor.name}.` : "Times stay as booked; the doctor sees patients in check-in order."}
+          {existing ? `${existing.patient.name} with ${existing.doctor.name}.` : "Patients are seen in check-in order."}
         </p>
       </div>
       <BookingForm

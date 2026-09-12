@@ -21,14 +21,13 @@ export function BookForPatient({ patient, doctors }: { patient: PatientDto; doct
         <HugeiconsIcon icon={CalendarAdd01Icon} />
         Book appointment
       </Button>
-      <Modal open={open} title="Book appointment" description={`For ${patient.name}. Times stay as booked; the doctor sees patients in check-in order.`} onClose={close}>
+      <Modal open={open} title="Book appointment" description={`For ${patient.name}. Patients are seen in check-in order.`} onClose={close}>
         <BookingForm
           embedded
           patients={[patient]}
           doctors={doctors}
           defaults={{ patientId: patient.id, date: today, walkIn: false }}
           existing={null}
-          onBack={close}
           onDone={() => {
             close();
             router.refresh();

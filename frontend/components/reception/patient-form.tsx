@@ -2,12 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Calendar03Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SafeLink } from "@/components/shared/safe-link";
 import { ApiError } from "@/lib/api/client";
+import { maskDob, parseDob } from "@/lib/format";
 import { createPatient, updatePatient } from "@/lib/api/patients";
 import type { Gender, PatientDto } from "@/lib/api/types";
 import { fieldErrors, focusFirstError, patientSchema, type FieldErrors } from "@/lib/forms";
@@ -50,7 +56,11 @@ export function PatientForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(initial?.name ?? existing?.name ?? "");
-  const [dob, setDob] = useState(initial?.dob ?? existing?.dob ?? "");
+  // The birth date lives as typed text; `dob` is its ISO form, empty until the text is a complete, real date.
+  const dob0 = initial?.dob ?? existing?.dob ?? "";
+  const [dobText, setDobText] = useState(dob0 ? format(new Date(`${dob0}T12:00:00`), "dd / MM / yyyy") : "");
+  const dob = parseDob(dobText);
+  const [dobOpen, setDobOpen] = useState(false);
   // Nothing preselected: a wrong default is worse than a blank one on a clinical record.
   const [gender, setGender] = useState<Gender | "">(initial?.gender ?? existing?.gender ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? existing?.phone ?? "");
@@ -117,7 +127,51 @@ export function PatientForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="dob">Date of birth</Label>
-          <Input id="dob" type="date" max={new Date().toISOString().slice(0, 10)} value={dob} aria-invalid={!!errors.dob || undefined} aria-describedby={describe("dob")} onChange={(e) => { setDob(e.target.value); clear("dob"); }} />
+          {/* Typing is the fast path: separators appear as the digits arrive. The calendar behind the icon (or Arrow Down) is the fallback, with month and year dropdowns since a birth date is usually decades back. */}
+          <div className="relative">
+            <Input
+              id="dob"
+              inputMode="numeric"
+              autoComplete="bday"
+              placeholder="DD / MM / YYYY"
+              value={dobText}
+              className="pr-10"
+              aria-invalid={!!errors.dob || undefined}
+              aria-describedby={describe("dob")}
+              onChange={(e) => {
+                setDobText(maskDob(e.target.value));
+                clear("dob");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setDobOpen(true);
+                }
+              }}
+            />
+            <Popover open={dobOpen} onOpenChange={setDobOpen}>
+              <PopoverTrigger aria-label="Pick from a calendar" render={<Button type="button" variant="ghost" size="icon-sm" className="absolute top-1/2 right-0.5 -translate-y-1/2 text-ink-3" />}>
+                <HugeiconsIcon icon={Calendar03Icon} />
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto overflow-hidden p-0">
+                <Calendar
+                  mode="single"
+                  captionLayout="dropdown"
+                  startMonth={new Date(new Date().getFullYear() - 120, 0)}
+                  endMonth={new Date()}
+                  disabled={{ after: new Date() }}
+                  selected={dob ? new Date(`${dob}T12:00:00`) : undefined}
+                  defaultMonth={dob ? new Date(`${dob}T12:00:00`) : undefined}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    setDobText(format(d, "dd / MM / yyyy"));
+                    clear("dob");
+                    setDobOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           <FieldError id="dob-error" message={errors.dob} />
         </div>
         <div className="grid gap-2">

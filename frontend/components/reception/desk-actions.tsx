@@ -45,7 +45,7 @@ export function DeskActions({
   );
   const [bookPatientId, setBookPatientId] = useState<string | undefined>(initial.patientId);
   const [walkIn, setWalkIn] = useState(Boolean(initial.walkIn));
-  // Book reached from Register goes back to Register; Book opened directly goes back to the desk.
+  // Book reached from Register gets a Back button to Register; Book opened directly has nothing to go back to.
   const [fromRegister, setFromRegister] = useState(false);
   // A patient registered a moment ago is not in the server-rendered list yet.
   const [added, setAdded] = useState<PatientDto[]>([]);
@@ -96,7 +96,7 @@ export function DeskActions({
             ? `${initial.reschedule.patient.name} with ${initial.reschedule.doctor.name}.`
             : modal === "register"
               ? "Phone numbers are checked against existing patients so nobody gets two records."
-              : "Times stay as booked; the doctor sees patients in check-in order."
+              : "Patients are seen in check-in order."
         }
         onClose={close}
       >
@@ -120,11 +120,11 @@ export function DeskActions({
             </motion.div>
           ) : modal === "book" ? (
             <motion.div key="book" initial={reduce ? false : { opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: 16, transition: { duration: 0.14 } }} transition={SPRING_QUICK}>
-              <BookingForm embedded patients={allPatients} doctors={doctors} defaults={{ patientId: bookPatientId, date, walkIn }} existing={null} initial={bookingDraft} onDraftChange={setBookingDraft} onBack={fromRegister ? () => setModal("register") : close} onDone={close} />
+              <BookingForm embedded patients={allPatients} doctors={doctors} defaults={{ patientId: bookPatientId, date, walkIn }} existing={null} initial={bookingDraft} onDraftChange={setBookingDraft} onBack={fromRegister ? () => setModal("register") : undefined} onDone={close} />
             </motion.div>
           ) : modal === "reschedule" && initial.reschedule ? (
             <motion.div key="reschedule" initial={reduce ? false : { opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, transition: { duration: 0.14 } }} transition={SPRING_QUICK}>
-              <BookingForm embedded patients={allPatients} doctors={doctors} defaults={{ date, walkIn: false }} existing={initial.reschedule} onBack={close} onDone={close} />
+              <BookingForm embedded patients={allPatients} doctors={doctors} defaults={{ date, walkIn: false }} existing={initial.reschedule} onDone={close} />
             </motion.div>
           ) : null}
         </AnimatePresence>
