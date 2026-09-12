@@ -15,6 +15,7 @@ export function AppointmentRow({
   blockedBy,
 }: {
   appointment: AppointmentDto & { time: string };
+  /** Stagger position on first paint; -1 once the list is settled, so filters do not replay the entrance. */
   index: number;
   current: boolean;
   /** Who must finish before this row can start: the patient in the room, or the earliest one still waiting ahead. */
@@ -34,11 +35,11 @@ export function AppointmentRow({
   return (
     // Stretched-link row: the name is the real link and covers the row; the action button sits above it.
     <motion.li
-      initial={reduce ? false : { opacity: 0, y: 8 }}
+      initial={reduce || index < 0 ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...SPRING, delay: Math.min(index, 12) * 0.04 }}
       className={`group relative grid grid-cols-[4.25rem_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line px-4 py-3.5 transition-colors duration-150 last:border-0 hover:bg-surface-2/70 active:bg-surface-2 has-[a:focus-visible]:bg-surface-2/70 has-[a:focus-visible]:shadow-[inset_3px_0_0_var(--color-accent-500)] sm:grid-cols-[5.5rem_1.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${
-        current ? "bg-accent-50/40" : ""
+        current ? "bg-accent-50/40 shadow-[inset_3px_0_0_var(--color-accent-500)]" : ""
       }`}
     >
       <div className={`num font-mono text-[13px] leading-tight ${muted ? "text-ink-3" : "text-ink"}`}>
@@ -64,7 +65,7 @@ export function AppointmentRow({
       <div className="min-w-0">
         <SafeLink
           href={profileHref}
-          className={`block truncate text-[15px] font-medium focus-visible:outline-none after:absolute after:inset-0 after:content-[''] ${muted ? "text-ink-2" : "text-ink"}`}
+          className={`block truncate text-[15px] focus-visible:outline-none after:absolute after:inset-0 after:content-[''] ${current ? "font-semibold" : "font-medium"} ${muted ? "text-ink-2" : "text-ink"}`}
         >
           {a.patient.name}
         </SafeLink>

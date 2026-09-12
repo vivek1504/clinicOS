@@ -30,6 +30,8 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<AppointmentStatus | "ALL">("ALL");
+  // Rows stagger in with the page; once the doctor has touched a filter, rows that come back just appear.
+  const [settled, setSettled] = useState(false);
 
   const q = query.trim().toLowerCase();
   const visible = rows.filter(
@@ -65,7 +67,10 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
             <Input
               type="search"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setSettled(true);
+                setQuery(e.target.value);
+              }}
               placeholder="Search patient or reason"
               aria-label="Search appointments"
               className="h-9 w-full pl-8 sm:w-64"
@@ -112,7 +117,10 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
                 key={f}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setStatus(f)}
+                onClick={() => {
+                  setSettled(true);
+                  setStatus(f);
+                }}
                 className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors duration-150 ${
                   active ? "bg-ink text-white" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
                 }`}
@@ -162,7 +170,7 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
               <AppointmentRow
                 key={a.id}
                 appointment={a}
-                index={i}
+                index={settled ? -1 : i}
                 current={current?.id === a.id}
                 blockedBy={blockerFor(a, rows)?.patient.name ?? null}
               />
