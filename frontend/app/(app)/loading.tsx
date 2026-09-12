@@ -14,7 +14,7 @@ export default function TodayLoading() {
         </div>
         <ClinicOverview loading />
       </header>
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <ScheduleSkeleton />
         <DayRailSkeleton />
       </div>

@@ -29,7 +29,7 @@ export function DoctorMenu({ doctor }: { doctor: DoctorDto }) {
     <div className="flex items-center gap-1.5">
       <span
         aria-hidden="true"
-        className="inline-flex size-6 items-center justify-center rounded-full bg-accent-100 text-[11px] font-semibold text-accent-800"
+        className="inline-flex size-7 items-center justify-center rounded-full bg-accent-100 text-[12px] font-semibold text-accent-800"
       >
         {initial}
       </span>

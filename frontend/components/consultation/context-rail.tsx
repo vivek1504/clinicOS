@@ -12,7 +12,7 @@ export function ContextRail({ patient, history, className = "" }: { patient: Pat
   const last = history.length ? [...history].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] : null;
 
   return (
-    <aside aria-labelledby="ctx-h" className={`max-xl:rounded-lg max-xl:bg-surface max-xl:shadow-1 max-md:sticky max-md:top-[52px] max-md:z-10 xl:self-start xl:pr-4 ${className}`}>
+    <aside aria-labelledby="ctx-h" className={`max-xl:rounded-lg max-xl:bg-surface max-xl:shadow-1 max-md:sticky max-md:top-[64px] max-md:z-10 xl:self-start xl:pr-4 ${className}`}>
       <div className="flex items-center justify-between gap-3 px-5 py-4 xl:px-0 xl:pt-1">
         <div>
           <h2 id="ctx-h" className="text-[15px] font-semibold tracking-[-0.01em] text-ink xl:text-[14px]">

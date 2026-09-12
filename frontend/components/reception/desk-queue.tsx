@@ -143,19 +143,19 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
               const isBusy = busy === a.id;
               const canMove = a.status === "BOOKED" || a.status === "WAITING" || a.status === "NO_SHOW";
               return (
-                <motion.li key={a.id} layout={!reduce} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduce ? undefined : { opacity: 0 }} transition={SPRING_QUICK} className={`grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3.5 first:rounded-t-lg last:rounded-b-lg last:border-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${a.status === "IN_CONSULTATION" ? "bg-accent-50/40" : ""}`}>
-                  <div className={`num font-mono text-[13px] leading-tight ${quiet ? "text-ink-3" : "text-ink"}`}>
+                <motion.li key={a.id} layout={!reduce} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduce ? undefined : { opacity: 0 }} transition={SPRING_QUICK} className={`grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-line px-4 py-4 first:rounded-t-lg last:rounded-b-lg last:border-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${a.status === "IN_CONSULTATION" ? "bg-accent-50/40" : ""}`}>
+                  <div className={`num font-mono text-[14px] leading-tight ${quiet ? "text-ink-3" : "text-ink"}`}>
                     <span className="font-medium">{clock}</span>
-                    <span className="ml-1 text-[11px] text-ink-3">{meridiem}</span>
+                    <span className="ml-1 text-[12px] text-ink-3">{meridiem}</span>
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <SafeLink href={`/patients/${a.patientId}`} className={`truncate text-[15px] font-medium hover:underline ${quiet ? "text-ink-2" : "text-ink"}`}>
+                      <SafeLink href={`/patients/${a.patientId}`} className={`truncate text-[16px] font-medium hover:underline ${quiet ? "text-ink-2" : "text-ink"}`}>
                         {a.patient.name}
                       </SafeLink>
                       <StatusBadge status={a.status} />
                     </div>
-                    <p className={`mt-0.5 truncate text-[13px] ${quiet ? "text-ink-3" : "text-ink-3"}`}>
+                    <p className="mt-0.5 line-clamp-2 text-[14px] text-ink-3">
                       {manyDoctors ? `${a.doctor.name} · ` : ""}
                       {a.reason}
                     </p>

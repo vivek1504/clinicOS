@@ -25,7 +25,7 @@ export function SaveBar({
   const reduce = useReducedMotion();
   return (
     <div className="chrome sticky bottom-0 z-20 -mx-5 mt-2 border-t border-line/80 px-5 py-3 sm:-mx-8 sm:px-8 xl:mt-0">
-      <div className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center justify-between gap-3">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-3" aria-live="polite">
           {error ? (
             <span role="alert" className="inline-flex items-center gap-1.5 font-medium text-danger-700">

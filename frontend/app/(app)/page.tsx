@@ -47,7 +47,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         </div>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <Suspense key={`sc-${selected}`} fallback={<ScheduleSkeleton />}>
           <Timeline date={selected} isToday={isToday} />
         </Suspense>

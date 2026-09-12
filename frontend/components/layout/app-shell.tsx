@@ -14,12 +14,12 @@ export function AppShell({ doctor, children }: { doctor: DoctorDto; children: Re
       </a>
 
       <header className="topbar sticky top-0 z-30">
-        <div className="mx-auto flex h-[52px] w-full max-w-[1680px] items-center justify-between px-5 sm:px-8">
+        <div className="mx-auto flex h-[64px] w-full max-w-[1920px] items-center justify-between px-5 sm:px-8">
           <SafeLink href="/" className="group flex items-center gap-2.5 rounded-sm text-ink">
             <Wordmark />
           </SafeLink>
 
-          <div className="flex items-center gap-4 text-[13px]">
+          <div className="flex items-center gap-4 text-[14px]">
             <p className="hidden text-ink-3 sm:block" suppressHydrationWarning>
               {formatLongDate(new Date())}
             </p>
@@ -29,12 +29,12 @@ export function AppShell({ doctor, children }: { doctor: DoctorDto; children: Re
         </div>
       </header>
 
-      <main id="main-content" className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col px-5 pt-8 pb-16 sm:px-8">
+      <main id="main-content" className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-5 pt-8 pb-16 sm:px-8">
         {children}
       </main>
 
       <footer id="site-footer" className="border-t border-line/80">
-        <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-1 px-5 py-4 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-1 px-5 py-4 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p>ClinicOS · Clinical use only</p>
           <p>AI drafts are reviewed by the clinician before any note is saved.</p>
         </div>
@@ -48,13 +48,13 @@ export function Wordmark({ large = false }: { large?: boolean }) {
     <>
       <span
         aria-hidden="true"
-        className={`relative inline-flex ${large ? "size-8 rounded-lg" : "size-6 rounded-md"} items-center justify-center bg-ink text-white`}
+        className={`relative inline-flex ${large ? "size-8 rounded-lg" : "size-7 rounded-md"} items-center justify-center bg-ink text-white`}
       >
-        <span className={`absolute ${large ? "h-3.5 w-[3px]" : "h-2.5 w-0.5"} rounded-full bg-white`} />
-        <span className={`absolute ${large ? "h-[3px] w-3.5" : "h-0.5 w-2.5"} rounded-full bg-white`} />
+        <span className={`absolute ${large ? "h-3.5 w-[3px]" : "h-3 w-0.5"} rounded-full bg-white`} />
+        <span className={`absolute ${large ? "h-[3px] w-3.5" : "h-0.5 w-3"} rounded-full bg-white`} />
         <span className={`absolute ${large ? "size-2" : "size-1.5"} rounded-full bg-accent-300 translate-x-[35%] -translate-y-[35%]`} />
       </span>
-      <span className={`${large ? "text-xl" : "text-[15px]"} font-semibold tracking-[-0.02em]`}>
+      <span className={`${large ? "text-xl" : "text-[16px]"} font-semibold tracking-[-0.02em]`}>
         Clinic<span className="font-normal text-ink-3">OS</span>
       </span>
     </>
