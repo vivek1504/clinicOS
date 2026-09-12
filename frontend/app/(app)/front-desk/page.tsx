@@ -23,7 +23,8 @@ export default async function FrontDeskPage({
   const me = await requireRole("RECEPTIONIST", "/");
   const { date, register, book, walkIn, patientId, appointmentId } = await searchParams;
   const today = new Intl.DateTimeFormat("en-CA").format(new Date());
-  const selected = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
+  // The desk works forward only: a past date in the URL (typed, or an old link) falls back to today.
+  const selected = date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= today ? date : today;
   const isToday = selected === today;
 
   const [appointments, patients, doctors] = await Promise.all([getAppointments(isToday ? undefined : selected), getPatients(), getDoctors()]);

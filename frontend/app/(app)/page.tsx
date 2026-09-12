@@ -26,7 +26,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const { date } = await searchParams;
   const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA").format(now); // YYYY-MM-DD
-  const selected = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
+  // Forward only, like the desk: a past date in the URL falls back to today.
+  const selected = date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= today ? date : today;
   const isToday = selected === today;
   const doctor = await getMe(); // memoized: the layout already fetched it for this request
   if (doctor.role === "RECEPTIONIST") redirect("/front-desk");

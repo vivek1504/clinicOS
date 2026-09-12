@@ -33,7 +33,9 @@ export function StatusBadge({ status, className = "" }: { status: AppointmentSta
           className={`size-1.5 rounded-full ${status === "WAITING" ? "bg-wait-700/80" : status === "BOOKED" ? "border border-ink-4" : "bg-accent-500 animate-pulse-dot"}`}
         />
       )}
-      {STATUS_LABEL[status]}
+      <span key={status} className="animate-in fade-in duration-200">
+        {STATUS_LABEL[status]}
+      </span>
     </span>
   );
 }

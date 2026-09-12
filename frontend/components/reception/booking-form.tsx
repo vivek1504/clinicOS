@@ -356,10 +356,12 @@ export function BookingForm({
                       const v = localDate(d);
                       const on = v === date;
                       return (
-                        <button key={v} type="button" role="radio" aria-checked={on} tabIndex={on || (!inStrip && i === 0) ? 0 : -1} onClick={() => pickDate(d)} className={`flex flex-col items-center rounded-md py-1.5 text-[11px] font-medium uppercase transition-colors ${on ? "bg-accent-600 text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}>
-                          <span>{WEEKDAY.format(d)}</span>
-                          <span className={`text-lg leading-tight font-semibold ${on ? "" : "text-ink"}`}>{d.getDate()}</span>
-                          <span>{MONTH.format(d)}</span>
+                        <button key={v} type="button" role="radio" aria-checked={on} tabIndex={on || (!inStrip && i === 0) ? 0 : -1} onClick={() => pickDate(d)} className={`relative flex flex-col items-center rounded-md py-1.5 text-[11px] font-medium uppercase transition-colors ${on ? "text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}>
+                          {/* One highlight shared by the chosen day; motion glides it over on a new pick. Keyed per page so a page turn does not drag it across the strip. */}
+                          {on ? <motion.span layoutId={`date-pill-${week}`} transition={reduce ? { duration: 0 } : SPRING_QUICK} className="absolute inset-0 rounded-md bg-accent-600" /> : null}
+                          <span className="relative">{WEEKDAY.format(d)}</span>
+                          <span className={`relative text-lg leading-tight font-semibold ${on ? "" : "text-ink"}`}>{d.getDate()}</span>
+                          <span className="relative">{MONTH.format(d)}</span>
                         </button>
                       );
                     })}

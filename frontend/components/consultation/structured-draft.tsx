@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
-import { Reveal } from "@/components/shared/reveal";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Reveal, SPRING_QUICK } from "@/components/shared/reveal";
 import { DRAFT_LIST_FIELDS, countUnreviewedAi, type DraftListField, type NoteDraft } from "./draft-model";
 import { ListField } from "./list-field";
 
@@ -34,6 +35,7 @@ export function StructuredDraft({
 }) {
   const unreviewed = countUnreviewedAi(draft);
   const cc = draft.chiefComplaint;
+  const reduce = useReducedMotion();
   const bodyRef = useRef<HTMLDivElement>(null);
 
   /** Walks the unreviewed AI fields in document order from wherever the caret is; editing one flips it to the doctor and
@@ -67,26 +69,42 @@ export function StructuredDraft({
     <div className="flex flex-1 flex-col">
       {aiGenerated || onRestorePrevious ? (
         <Reveal className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface/90 px-6 py-2.5 backdrop-blur-md">
-          {aiGenerated ? (
-            unreviewed > 0 ? (
-              <button
-                type="button"
-                onClick={reviewNext}
-                aria-live="polite"
-                title="⌘. next · ↵ accept as written · type to change"
-                className="num inline-flex h-7 items-center gap-1.5 rounded-full bg-ai-100 px-3 text-[12px] font-medium text-ai-700 transition-colors duration-300 hover:bg-ai-200"
-              >
-                Review {unreviewed} {unreviewed === 1 ? "item" : "items"}
-                <ArrowRightIcon className="size-3.5" aria-hidden="true" />
-                <kbd className="ml-1 hidden rounded-[3px] bg-ai-700/10 px-1 font-sans text-[10px] font-medium text-ai-700 sm:inline">⌘.</kbd>
-              </button>
-            ) : (
-              <span aria-live="polite" className="num inline-flex h-7 items-center gap-1.5 rounded-full bg-accent-50 px-3 text-[12px] font-medium text-accent-700">
-                <CheckIcon className="size-3" strokeWidth={2.5} aria-hidden="true" />
-                Ready to record
-              </span>
-            )
-          ) : null}
+          {/* Review pill and Ready pill crossfade; inside the pill the count rolls up as items are reviewed. */}
+          <AnimatePresence mode="wait" initial={false}>
+            {aiGenerated ? (
+              unreviewed > 0 ? (
+                <motion.button
+                  key="review"
+                  type="button"
+                  onClick={reviewNext}
+                  aria-live="polite"
+                  title="⌘. next · ↵ accept as written · type to change"
+                  initial={reduce ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={reduce ? undefined : { opacity: 0 }}
+                  transition={{ duration: 0.12 }}
+                  className="num inline-flex h-7 items-center gap-1.5 rounded-full bg-ai-100 px-3 text-[12px] font-medium text-ai-700 transition-colors duration-300 hover:bg-ai-200"
+                >
+                  Review
+                  <span className="relative inline-block overflow-hidden">
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span key={unreviewed} initial={reduce ? false : { y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={reduce ? undefined : { y: -8, opacity: 0 }} transition={SPRING_QUICK} className="inline-block">
+                        {unreviewed}
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
+                  {unreviewed === 1 ? "item" : "items"}
+                  <ArrowRightIcon className="size-3.5" aria-hidden="true" />
+                  <kbd className="ml-1 hidden rounded-[3px] bg-ai-700/10 px-1 font-sans text-[10px] font-medium text-ai-700 sm:inline">⌘.</kbd>
+                </motion.button>
+              ) : (
+                <motion.span key="ready" aria-live="polite" initial={reduce ? false : { opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={reduce ? undefined : { opacity: 0 }} transition={SPRING_QUICK} className="num inline-flex h-7 items-center gap-1.5 rounded-full bg-accent-50 px-3 text-[12px] font-medium text-accent-700">
+                  <CheckIcon className="size-3" strokeWidth={2.5} aria-hidden="true" />
+                  Ready to record
+                </motion.span>
+              )
+            ) : null}
+          </AnimatePresence>
           {draftVersion > 1 ? <span className="num ml-auto text-[12px] text-ink-3">Draft {draftVersion}</span> : null}
           {onRestorePrevious ? (
             <button type="button" onClick={onRestorePrevious} className={`text-[12px] font-medium text-ink-3 underline-offset-2 transition-colors hover:text-ink hover:underline ${draftVersion > 1 ? "" : "ml-auto"}`}>

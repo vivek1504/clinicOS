@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { SPRING_QUICK } from "@/components/shared/reveal";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, Calendar03Icon, CalendarRemove01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SafeLink } from "@/components/shared/safe-link";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -43,6 +47,7 @@ function MenuItem({ children, onClick, disabled }: { children: React.ReactNode; 
 /** The receptionist's schedule: check in, mark absent, reschedule, cancel. Never starts a consultation. */
 export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; isToday: boolean }) {
   const router = useRouter();
+  const reduce = useReducedMotion();
   const [busy, setBusy] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmCancel, setConfirmCancel] = useState<Row | null>(null);
@@ -50,6 +55,9 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
   const toCheckIn = rows.filter((r) => r.status === "BOOKED").length;
 
   const goTo = (d: string) => router.replace(`/front-desk?date=${d}`);
+  const [dateOpen, setDateOpen] = useState(false);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
   const mark = async (row: Row, status: AppointmentStatus) => {
     setBusy(row.id);
@@ -75,16 +83,29 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-md bg-surface shadow-1">
-            <Button variant="ghost" size="icon-sm" className="rounded-r-none" aria-label="Previous day" onClick={() => goTo(shiftDate(date, -1))}>
+            <Button variant="ghost" size="icon-sm" className="rounded-r-none" aria-label="Previous day" disabled={isToday} onClick={() => goTo(shiftDate(date, -1))}>
               <HugeiconsIcon icon={ArrowLeft01Icon} />
             </Button>
-            <div className="relative">
-              <span aria-hidden="true" className="inline-flex h-8 items-center gap-2 border-x border-line px-3 text-[13px] font-medium num text-ink">
+            {/* The desk only looks forward: yesterday's list is the doctor's business, so past days cannot be picked. */}
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger aria-label="Schedule date" render={<Button variant="ghost" size="sm" className="num h-8 rounded-none border-x border-line px-3 text-[13px] font-medium" />}>
                 <HugeiconsIcon icon={Calendar03Icon} className="size-3.5 text-ink-3" />
                 {formatShortDate(new Date(`${date}T12:00:00`))}
-              </span>
-              <input type="date" value={date} onChange={(e) => e.target.value && goTo(e.target.value)} aria-label="Schedule date" className="absolute inset-0 cursor-pointer opacity-0 focus-visible:opacity-100" />
-            </div>
+              </PopoverTrigger>
+              <PopoverContent align="center" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={new Date(`${date}T12:00:00`)}
+                  defaultMonth={new Date(`${date}T12:00:00`)}
+                  disabled={{ before: todayStart }}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    goTo(new Intl.DateTimeFormat("en-CA").format(d));
+                    setDateOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
             <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Next day" onClick={() => goTo(shiftDate(date, 1))}>
               <HugeiconsIcon icon={ArrowRight01Icon} />
             </Button>
@@ -114,13 +135,15 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
           />
         ) : (
           <ol aria-label="Appointments">
+            {/* Rows keep their place on refresh: a new booking fades in, a moved one slides to its slot, a rescheduled one fades out. */}
+            <AnimatePresence initial={false}>
             {rows.map((a) => {
               const [clock, meridiem] = a.time.split(" ");
               const quiet = a.status === "COMPLETED" || a.status === "NO_SHOW" || a.status === "CANCELLED";
               const isBusy = busy === a.id;
               const canMove = a.status === "BOOKED" || a.status === "WAITING" || a.status === "NO_SHOW";
               return (
-                <li key={a.id} className={`grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3.5 first:rounded-t-lg last:rounded-b-lg last:border-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${a.status === "IN_CONSULTATION" ? "bg-accent-50/40" : ""}`}>
+                <motion.li key={a.id} layout={!reduce} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduce ? undefined : { opacity: 0 }} transition={SPRING_QUICK} className={`grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3.5 first:rounded-t-lg last:rounded-b-lg last:border-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:gap-x-6 sm:px-5 ${a.status === "IN_CONSULTATION" ? "bg-accent-50/40" : ""}`}>
                   <div className={`num font-mono text-[13px] leading-tight ${quiet ? "text-ink-3" : "text-ink"}`}>
                     <span className="font-medium">{clock}</span>
                     <span className="ml-1 text-[11px] text-ink-3">{meridiem}</span>
@@ -144,6 +167,9 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
                   </div>
                   {/* One action a receptionist does often stays visible; the rare ones sit behind More. */}
                   <div className="col-span-2 flex items-center justify-end gap-1.5 sm:col-span-1">
+                    {/* The whole cell crossfades when the status changes, so "Check in" does not blink out under the cursor. */}
+                    <AnimatePresence mode="wait" initial={false}>
+                    <motion.div key={a.status} initial={reduce ? false : { opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={reduce ? undefined : { opacity: 0, scale: 0.96 }} transition={{ duration: 0.12 }} className="flex items-center gap-1.5">
                     {a.status === "BOOKED" ? (
                       <Button size="sm" loading={isBusy} disabled={isBusy} onClick={() => void mark(a, "WAITING")}>
                         Check in
@@ -183,10 +209,13 @@ export function DeskQueue({ rows, date, isToday }: { rows: Row[]; date: string; 
                         </div>
                       </details>
                     ) : null}
+                    </motion.div>
+                    </AnimatePresence>
                   </div>
-                </li>
+                </motion.li>
               );
             })}
+            </AnimatePresence>
           </ol>
         )}
       </div>

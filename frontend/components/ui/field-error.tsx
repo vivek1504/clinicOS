@@ -2,7 +2,7 @@
 export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} role="alert" className="text-[12px] font-medium text-danger-700">
+    <p id={id} role="alert" className="animate-in fade-in slide-in-from-top-1 duration-150 text-[12px] font-medium text-danger-700">
       {message}
     </p>
   );

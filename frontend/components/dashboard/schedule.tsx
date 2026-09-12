@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CalendarIcon, CalendarXIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, SearchXIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -44,6 +46,9 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
   // The clinician's next action: the patient in the room, otherwise the earliest waiting one.
   const current = rows.find((r) => r.status === "IN_CONSULTATION") ?? rows.find((r) => r.status === "WAITING") ?? null;
   const goTo = (d: string) => router.replace(d === new Intl.DateTimeFormat("en-CA").format(new Date()) ? "/" : `/?date=${d}`);
+  const [dateOpen, setDateOpen] = useState(false);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
   return (
     <section aria-labelledby="schedule-h" className="flex flex-col">
@@ -78,22 +83,28 @@ export function Schedule({ rows, date, isToday }: { rows: AppointmentRowData[]; 
           </div>
 
           <div className="flex w-fit items-center rounded-md bg-surface shadow-1">
-            <Button variant="ghost" size="icon-sm" className="rounded-r-none" aria-label="Previous day" onClick={() => goTo(shiftDate(date, -1))}>
+            <Button variant="ghost" size="icon-sm" className="rounded-r-none" aria-label="Previous day" disabled={isToday} onClick={() => goTo(shiftDate(date, -1))}>
               <ChevronLeftIcon />
             </Button>
-            <div className="relative">
-              <span aria-hidden="true" className="inline-flex h-8 items-center gap-2 border-x border-line px-3 text-[13px] font-medium num text-ink">
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger aria-label="Appointment date" render={<Button variant="ghost" size="sm" className="num h-8 rounded-none border-x border-line px-3 text-[13px] font-medium" />}>
                 <CalendarIcon className="size-3.5 text-ink-3" />
                 {formatShortDate(new Date(`${date}T12:00:00`))}
-              </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => e.target.value && goTo(e.target.value)}
-                aria-label="Appointment date"
-                className="absolute inset-0 cursor-pointer opacity-0 focus-visible:opacity-100"
-              />
-            </div>
+              </PopoverTrigger>
+              <PopoverContent align="center" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={new Date(`${date}T12:00:00`)}
+                  defaultMonth={new Date(`${date}T12:00:00`)}
+                  disabled={{ before: todayStart }}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    goTo(new Intl.DateTimeFormat("en-CA").format(d));
+                    setDateOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
             <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Next day" onClick={() => goTo(shiftDate(date, 1))}>
               <ChevronRightIcon />
             </Button>

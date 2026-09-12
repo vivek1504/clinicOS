@@ -20,8 +20,8 @@ export async function DayRail({ appointments, isToday }: { appointments: Appoint
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Same heading block as the schedule's, so both panels share a top edge. */}
-      <div>
+      {/* Same heading block as the schedule's, so both panels share a top edge. Keyed on who is up so a change fades in rather than cutting. */}
+      <div key={`${next?.id ?? "none"}-${next?.status ?? ""}`} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
         <div className="pb-4">
           <h2 className="text-[20px] font-semibold tracking-[-0.015em] text-ink">{inRoom ? "In the room" : "Up next"}</h2>
           <p className="mt-0.5 text-[13px] text-ink-3">
@@ -91,7 +91,7 @@ export async function DayRail({ appointments, isToday }: { appointments: Appoint
             {sorted.map((a) => (
               <span
                 key={a.id}
-                className={`flex-1 ${a.status === "COMPLETED" ? "bg-accent-600" : a.status === "IN_CONSULTATION" ? "bg-accent-300" : a.status === "NO_SHOW" || a.status === "CANCELLED" ? "bg-line" : "bg-line-strong"}`}
+                className={`flex-1 transition-colors duration-300 ${a.status === "COMPLETED" ? "bg-accent-600" : a.status === "IN_CONSULTATION" ? "bg-accent-300" : a.status === "NO_SHOW" || a.status === "CANCELLED" ? "bg-line" : "bg-line-strong"}`}
               />
             ))}
           </div>
