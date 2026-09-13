@@ -7,6 +7,7 @@ import {
 } from "../schemas/consultation";
 import { IdParams, ErrorEnvelope } from "../schemas/common";
 import { sessionPlugin } from "../auth";
+import { AppError } from "../lib/errors";
 
 export const consultationRoutes = new Elysia({ prefix: "/consultations" })
   .use(sessionPlugin)
@@ -33,6 +34,7 @@ export const consultationRoutes = new Elysia({ prefix: "/consultations" })
   .patch(
     "/:id",
     async ({ params, body, consultationService, doctor }) => {
+      if (body.finalNote === undefined && body.rawNotes === undefined) throw new AppError("VALIDATION", "Nothing to change");
       return await consultationService.patch(params.id, body, doctor!.id);
     },
     {

@@ -61,6 +61,9 @@ export function buildRecord(
     .join("\n");
 }
 
+/** The summary is written from the most recent visits only, so a long-standing patient does not blow the prompt. */
+export const SUMMARY_VISITS = 50;
+
 export class AiService {
   constructor(private provider: AiProvider) {}
 
@@ -70,7 +73,7 @@ export class AiService {
   }): Promise<{ summary: string; model: string; latencyMs: number; basedOn: number }> {
     const patient = await prisma.patient.findUnique({
       where: { id: input.patientId },
-      include: { consultations: { orderBy: { createdAt: "asc" }, select: { createdAt: true, finalNote: true } } },
+      include: { consultations: { orderBy: { createdAt: "desc" }, take: SUMMARY_VISITS, select: { createdAt: true, finalNote: true } } },
     });
     if (!patient) throw new AppError("NOT_FOUND", `Patient not found: ${input.patientId}`);
     if (patient.consultations.length === 0) {
@@ -80,7 +83,7 @@ export class AiService {
     const t0 = Date.now();
     let text: string;
     try {
-      ({ text } = await this.provider.summarize({ record: buildRecord(patient.consultations), signal: input.signal }));
+      ({ text } = await this.provider.summarize({ record: buildRecord(patient.consultations.reverse()), signal: input.signal }));
     } catch (err) {
       if (err instanceof AiProviderError) throw new AppError(err.code, err.message);
       throw err;
