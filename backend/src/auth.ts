@@ -44,8 +44,10 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   .use(sessionPlugin)
   .post(
     "/sign-in",
-    async ({ body, cookie }) => {
-      const { doctor, token } = await authService.signIn(body.email, body.password);
+    async ({ body, cookie, request, server }) => {
+      // Behind Vercel the client address is in x-forwarded-for; locally ask the server.
+      const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || server?.requestIP(request)?.address || "?";
+      const { doctor, token } = await authService.signIn(body.email, body.password, ip);
       cookie[SESSION_COOKIE]!.set({ value: token, ...cookieOptions });
       return { doctor };
     },

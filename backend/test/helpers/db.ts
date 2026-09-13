@@ -1,5 +1,5 @@
 import { prisma } from "../../src/lib/prisma";
-import { resetSignInThrottle } from "../../src/services/auth.service";
+import { hashToken, resetSignInThrottle } from "../../src/services/auth.service";
 
 export const TEST_PASSWORD = "correct horse";
 export const TEST_SESSION = "test-session-token";
@@ -25,13 +25,13 @@ export async function resetTestDb() {
     },
   });
   await prisma.session.create({
-    data: { id: TEST_SESSION, userId: doctor.id, expiresAt: new Date(Date.now() + 60_000) },
+    data: { id: hashToken(TEST_SESSION), userId: doctor.id, expiresAt: new Date(Date.now() + 60_000) },
   });
   const receptionist = await prisma.user.create({
     data: { id: "rec_default", name: "Front Desk", email: "desk@test.local", role: "RECEPTIONIST", passwordHash: doctor.passwordHash },
   });
   await prisma.session.create({
-    data: { id: TEST_RECEPTION_SESSION, userId: receptionist.id, expiresAt: new Date(Date.now() + 60_000) },
+    data: { id: hashToken(TEST_RECEPTION_SESSION), userId: receptionist.id, expiresAt: new Date(Date.now() + 60_000) },
   });
 
   const patient = await prisma.patient.create({

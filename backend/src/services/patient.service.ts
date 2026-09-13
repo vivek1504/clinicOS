@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma";
 import { AppError } from "../lib/errors";
 import { getAge } from "../lib/dates";
 import { Gender, Prisma } from "@prisma/client";
+import { toConsultationDto, type ConsultationDtoType } from "./consultation.service";
 
 const isUniqueViolation = (err: unknown): err is Prisma.PrismaClientKnownRequestError =>
   err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
@@ -15,23 +16,6 @@ export interface PatientDtoType {
   phone: string;
   allergies: string[];
   conditions: string[];
-}
-
-export interface PatientConsultationItemDto {
-  id: string;
-  patientId: string;
-  doctorId: string;
-  appointmentId: string | null;
-  clientRequestId: string | null;
-  createdAt: string;
-  chiefComplaint: string | null;
-  rawNotes: string;
-  aiDraft: any | null;
-  finalNote: any;
-  aiModel: string | null;
-  aiLatencyMs: number | null;
-  wasAiUsed: boolean;
-  wasAiEdited: boolean;
 }
 
 export interface PatientInput {
@@ -133,7 +117,7 @@ export class PatientService {
     }
   }
 
-  async getConsultationsByPatientId(patientId: string): Promise<PatientConsultationItemDto[]> {
+  async getConsultationsByPatientId(patientId: string): Promise<ConsultationDtoType[]> {
     const patient = await prisma.patient.findUnique({
       where: { id: patientId },
     });
@@ -147,27 +131,6 @@ export class PatientService {
       orderBy: { createdAt: "desc" },
     });
 
-    return consultations.map((c) => {
-      const finalObj = c.finalNote as Record<string, any> | null;
-      const chiefComplaint =
-        typeof finalObj?.chiefComplaint === "string" ? finalObj.chiefComplaint : null;
-
-      return {
-        id: c.id,
-        patientId: c.patientId,
-        doctorId: c.doctorId,
-        appointmentId: c.appointmentId,
-        clientRequestId: c.clientRequestId,
-        createdAt: c.createdAt.toISOString(),
-        chiefComplaint,
-        rawNotes: c.rawNotes,
-        aiDraft: c.aiDraft,
-        finalNote: c.finalNote,
-        aiModel: c.aiModel,
-        aiLatencyMs: c.aiLatencyMs,
-        wasAiUsed: c.wasAiUsed,
-        wasAiEdited: c.wasAiEdited,
-      };
-    });
+    return consultations.map(toConsultationDto);
   }
 }

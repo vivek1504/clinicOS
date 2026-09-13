@@ -53,6 +53,11 @@ const TRANSITIONS: Record<AppointmentStatus, Partial<Record<AppointmentStatus, R
 const isUniqueViolation = (err: unknown): err is Prisma.PrismaClientKnownRequestError =>
   err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 
+/** The update's `where` named the status we read; nothing matched, so someone else moved the appointment meanwhile. */
+const isStaleStatus = (err: unknown): err is Prisma.PrismaClientKnownRequestError =>
+  err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025";
+const stale = (id: string) => new AppError("CONFLICT", `Appointment ${id} was changed by someone else; reload and try again`);
+
 const GRACE_MS = 5 * 60 * 1000; // a walk-in booked "now" must not trip the past-time check
 
 export const SLOT_MINUTES = 15;
@@ -148,7 +153,7 @@ export class AppointmentService {
     }
     try {
       const row = await prisma.appointment.update({
-        where: { id },
+        where: { id, status: existing.status },
         data: {
           ...(when ? { scheduledAt: when } : {}),
           ...(input.reason ? { reason: input.reason.trim() } : {}),
@@ -157,6 +162,7 @@ export class AppointmentService {
       });
       return toDto(row);
     } catch (err) {
+      if (isStaleStatus(err)) throw stale(id);
       if (isUniqueViolation(err)) throw new AppError("CONFLICT", "That time is already booked for this doctor");
       throw err;
     }
@@ -178,9 +184,10 @@ export class AppointmentService {
     if (newStatus === "IN_CONSULTATION") await assertCanStart(prisma, existing);
 
     try {
-      const row = await prisma.appointment.update({ where: { id }, data: { status: newStatus }, include: INCLUDE });
+      const row = await prisma.appointment.update({ where: { id, status: existing.status }, data: { status: newStatus }, include: INCLUDE });
       return toDto(row);
     } catch (err) {
+      if (isStaleStatus(err)) throw stale(id);
       if (!isUniqueViolation(err)) throw err;
       // Two partial unique indexes can fire here. Which one is implied by the target status.
       if (newStatus === "IN_CONSULTATION") {

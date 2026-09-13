@@ -3,7 +3,7 @@ import { AppError } from "../lib/errors";
 import { assertCanStart, assertOwnsAppointment } from "./queue";
 import { normalizeNote, deepEqual } from "../ai/normalize";
 import type { StructuredNoteType } from "../ai/schema";
-import { Prisma } from "@prisma/client";
+import { Prisma, type AppointmentStatus, type Consultation } from "@prisma/client";
 
 const isUniqueViolation = (err: unknown): err is Prisma.PrismaClientKnownRequestError =>
   err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
@@ -38,11 +38,11 @@ export interface ConsultationDtoType {
   chiefComplaint?: string | null;
 }
 
-function toDto(row: any): ConsultationDtoType {
-  const finalObj = row.finalNote as Record<string, any> | null;
-  const chiefComplaint =
-    typeof finalObj?.chiefComplaint === "string" ? finalObj.chiefComplaint : null;
+/** Prisma types the JSON columns as JsonValue; every note in them went through normalizeNote on the way in. */
+const asNote = (json: Prisma.JsonValue | null) => json as unknown as StructuredNoteType | null;
 
+export function toConsultationDto(row: Consultation): ConsultationDtoType {
+  const finalNote = asNote(row.finalNote)!;
   return {
     id: row.id,
     patientId: row.patientId,
@@ -51,22 +51,22 @@ function toDto(row: any): ConsultationDtoType {
     clientRequestId: row.clientRequestId,
     createdAt: row.createdAt.toISOString(),
     rawNotes: row.rawNotes,
-    aiDraft: row.aiDraft as StructuredNoteType | null,
-    finalNote: row.finalNote as StructuredNoteType,
+    aiDraft: asNote(row.aiDraft),
+    finalNote,
     aiModel: row.aiModel,
     aiLatencyMs: row.aiLatencyMs,
     wasAiUsed: row.wasAiUsed,
     wasAiEdited: row.wasAiEdited,
-    chiefComplaint,
+    chiefComplaint: finalNote.chiefComplaint ?? null,
   };
 }
 
 export class ConsultationService {
   /** A retried request gets its original result back. The same key with different content is a client bug, not a retry. */
-  private replay(existing: { patientId: string; rawNotes: string; finalNote: unknown }, data: CreateConsultationInput) {
+  private replay(existing: Consultation, data: CreateConsultationInput) {
     const same = existing.patientId === data.patientId && existing.rawNotes === data.rawNotes && deepEqual(existing.finalNote, normalizeNote(data.finalNote));
     if (!same) throw new AppError("CONFLICT", "This clientRequestId was already used for a different consultation");
-    return { status: 200 as const, consultation: toDto(existing) };
+    return { status: 200 as const, consultation: toConsultationDto(existing) };
   }
 
   async create(data: CreateConsultationInput, doctorId: string): Promise<{ status: 200 | 201; consultation: ConsultationDtoType }> {
@@ -98,6 +98,7 @@ export class ConsultationService {
       }
 
       // If appointmentId given, verify it belongs to patient and has no consultation
+      let apptStatus: AppointmentStatus | undefined;
       if (data.appointmentId) {
         const appt = await tx.appointment.findUnique({
           where: { id: data.appointmentId },
@@ -125,6 +126,7 @@ export class ConsultationService {
         }
         // Skipping straight to COMPLETED still has to respect the room and the queue.
         if (appt.status !== "IN_CONSULTATION") await assertCanStart(tx, appt);
+        apptStatus = appt.status;
       }
 
       // 3. Normalize finalNote and aiDraft
@@ -150,8 +152,8 @@ export class ConsultationService {
           appointmentId: data.appointmentId ?? null,
           clientRequestId: data.clientRequestId,
           rawNotes: data.rawNotes,
-          aiDraft: normalizedDraft ? (normalizedDraft as any) : undefined,
-          finalNote: normalizedFinal as any,
+          aiDraft: normalizedDraft ? (normalizedDraft as Prisma.InputJsonObject) : undefined,
+          finalNote: normalizedFinal as Prisma.InputJsonObject,
           aiModel: normalizedDraft ? (data.aiModel ?? null) : null,
           aiLatencyMs: normalizedDraft ? (data.aiLatencyMs ?? null) : null,
           wasAiUsed: normalizedDraft !== null,
@@ -159,15 +161,17 @@ export class ConsultationService {
         },
       });
 
-      // 6. Update appointment to COMPLETED if appointmentId present
-      if (data.appointmentId) {
-        await tx.appointment.update({
-          where: { id: data.appointmentId },
+      // 6. Complete the appointment, but only if it is still in the state read above: a cancel or no-show that
+      //    landed meanwhile must not be overwritten by COMPLETED.
+      if (data.appointmentId && apptStatus) {
+        const { count } = await tx.appointment.updateMany({
+          where: { id: data.appointmentId, status: apptStatus },
           data: { status: "COMPLETED" },
         });
+        if (count !== 1) throw new AppError("CONFLICT", `Appointment ${data.appointmentId} was changed by someone else; reload and try again`);
       }
 
-      return { status: 201, consultation: toDto(created) };
+      return { status: 201, consultation: toConsultationDto(created) };
     });
   }
 
@@ -183,7 +187,7 @@ export class ConsultationService {
       throw new AppError("NOT_FOUND", `Consultation not found: ${id}`);
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.ConsultationUpdateInput = {};
 
     if (data.rawNotes !== undefined) {
       updateData.rawNotes = data.rawNotes;
@@ -191,7 +195,7 @@ export class ConsultationService {
 
     if (data.finalNote !== undefined) {
       const normalizedFinal = normalizeNote(data.finalNote);
-      updateData.finalNote = normalizedFinal;
+      updateData.finalNote = normalizedFinal as Prisma.InputJsonObject;
 
       let wasAiEdited = existing.wasAiEdited;
       if (existing.aiDraft) {
@@ -207,6 +211,6 @@ export class ConsultationService {
       data: updateData,
     });
 
-    return toDto(updated);
+    return toConsultationDto(updated);
   }
 }
